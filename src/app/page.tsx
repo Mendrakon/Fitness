@@ -36,7 +36,7 @@ export default function HomePage() {
     <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">FeetTrack</h1>
+        <h1 className="text-2xl font-bold">FitTrack</h1>
         <p className="text-sm text-muted-foreground">
           {format(now, "EEEE, d. MMMM", { locale: de })}
         </p>

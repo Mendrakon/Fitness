@@ -11,7 +11,10 @@ import { MUSCLE_GROUP_LABELS, CATEGORY_LABELS } from "@/lib/types";
 import { estimate1RM, exerciseVolume } from "@/lib/calculations";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Trophy, TrendingUp, Dumbbell, Calendar } from "lucide-react";
+import { Trophy, TrendingUp, Dumbbell, Calendar, BarChart3 } from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 
 export default function ExerciseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -21,46 +24,69 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
   const exercise = getById(id);
   const workoutsWithExercise = getForExercise(id);
 
-  const records = useMemo(() => {
+  interface RecordsData {
+    bestWeight: { weight: number; reps: number; date: string } | null;
+    bestVolume: { volume: number; date: string } | null;
+    best1RM: { value: number; date: string } | null;
+    bestByReps: Record<number, { weight: number; date: string }>;
+  }
+
+  const records: RecordsData | null = useMemo((): RecordsData | null => {
     if (!workoutsWithExercise.length) return null;
-
-    let bestWeight: { weight: number; reps: number; date: string } | null = null;
-    let bestVolume: { volume: number; date: string } | null = null;
-    let best1RM: { value: number; date: string } | null = null;
-    const bestByReps: Record<number, { weight: number; date: string }> = {};
-
+    const result: RecordsData = { bestWeight: null, bestVolume: null, best1RM: null, bestByReps: {} };
     workoutsWithExercise.forEach(w => {
       const we = w.exercises.find(e => e.exerciseId === id);
       if (!we) return;
-
       we.sets.forEach(s => {
         if (!s.completed || s.tag === "warmup" || !s.weight || !s.reps) return;
-
-        if (!bestWeight || s.weight > bestWeight.weight) {
-          bestWeight = { weight: s.weight, reps: s.reps, date: w.startTime };
+        if (!result.bestWeight || s.weight > result.bestWeight.weight) {
+          result.bestWeight = { weight: s.weight, reps: s.reps, date: w.startTime };
         }
-
         const vol = s.weight * s.reps;
-        if (!bestVolume || vol > bestVolume.volume) {
-          bestVolume = { volume: vol, date: w.startTime };
+        if (!result.bestVolume || vol > result.bestVolume.volume) {
+          result.bestVolume = { volume: vol, date: w.startTime };
         }
-
         if (s.reps <= 12) {
           const rm = estimate1RM(s.weight, s.reps);
-          if (!best1RM || rm > best1RM.value) {
-            best1RM = { value: rm, date: w.startTime };
+          if (!result.best1RM || rm > result.best1RM.value) {
+            result.best1RM = { value: rm, date: w.startTime };
           }
         }
-
         if (s.reps <= 12) {
-          if (!bestByReps[s.reps] || s.weight > bestByReps[s.reps].weight) {
-            bestByReps[s.reps] = { weight: s.weight, date: w.startTime };
+          if (!result.bestByReps[s.reps] || s.weight > result.bestByReps[s.reps].weight) {
+            result.bestByReps[s.reps] = { weight: s.weight, date: w.startTime };
           }
         }
       });
     });
+    return result;
+  }, [workoutsWithExercise, id]);
 
-    return { bestWeight, bestVolume, best1RM, bestByReps };
+  // Chart data
+  const chartData = useMemo(() => {
+    return [...workoutsWithExercise]
+      .reverse()
+      .map(w => {
+        const we = w.exercises.find(e => e.exerciseId === id);
+        if (!we) return null;
+
+        const volume = exerciseVolume(we.sets);
+        let best1rm = 0;
+        we.sets.forEach(s => {
+          if (!s.completed || s.tag === "warmup" || !s.weight || !s.reps) return;
+          if (s.reps <= 12) {
+            const rm = estimate1RM(s.weight, s.reps);
+            if (rm > best1rm) best1rm = rm;
+          }
+        });
+
+        return {
+          date: format(new Date(w.startTime), "d.M.", { locale: de }),
+          volume,
+          est1RM: best1rm || undefined,
+        };
+      })
+      .filter(Boolean);
   }, [workoutsWithExercise, id]);
 
   if (!exercise) {
@@ -77,11 +103,13 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
 
       <Tabs defaultValue="info" className="px-4 pt-3">
         <TabsList className="w-full">
-          <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
-          <TabsTrigger value="history" className="flex-1">Verlauf</TabsTrigger>
-          <TabsTrigger value="records" className="flex-1">Rekorde</TabsTrigger>
+          <TabsTrigger value="info" className="flex-1 text-xs">Info</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 text-xs">Verlauf</TabsTrigger>
+          <TabsTrigger value="records" className="flex-1 text-xs">Rekorde</TabsTrigger>
+          <TabsTrigger value="charts" className="flex-1 text-xs">Charts</TabsTrigger>
         </TabsList>
 
+        {/* Info Tab */}
         <TabsContent value="info" className="mt-3 space-y-3">
           <Card>
             <CardContent className="py-3 space-y-2">
@@ -105,6 +133,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
           </Card>
         </TabsContent>
 
+        {/* History Tab */}
         <TabsContent value="history" className="mt-3 space-y-2">
           {workoutsWithExercise.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
@@ -151,8 +180,9 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
           )}
         </TabsContent>
 
+        {/* Records Tab */}
         <TabsContent value="records" className="mt-3 space-y-3">
-          {!records || !records.bestWeight ? (
+          {!records || (!records.bestWeight && !records.best1RM) ? (
             <div className="flex flex-col items-center py-12 text-center">
               <Trophy className="h-8 w-8 text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">Noch keine Rekorde</p>
@@ -160,7 +190,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                {records.bestWeight && (
+                {records.bestWeight ? (
                   <Card>
                     <CardContent className="py-3 text-center">
                       <Dumbbell className="h-5 w-5 text-primary mx-auto mb-1" />
@@ -170,8 +200,8 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
                       </p>
                     </CardContent>
                   </Card>
-                )}
-                {records.best1RM && (
+                ) : null}
+                {records.best1RM ? (
                   <Card>
                     <CardContent className="py-3 text-center">
                       <TrendingUp className="h-5 w-5 text-primary mx-auto mb-1" />
@@ -179,7 +209,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
                       <p className="text-[10px] text-muted-foreground">Geschätzte 1RM</p>
                     </CardContent>
                   </Card>
-                )}
+                ) : null}
               </div>
 
               {Object.keys(records.bestByReps).length > 0 && (
@@ -200,6 +230,103 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
                         );
                       })}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* Charts Tab */}
+        <TabsContent value="charts" className="mt-3 space-y-4">
+          {chartData.length < 2 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <BarChart3 className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Mindestens 2 Workouts nötig für Charts
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Volume Chart */}
+              <Card>
+                <CardContent className="py-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase">
+                    Volumen (kg)
+                  </h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10 }}
+                        className="text-muted-foreground"
+                        width={45}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="volume"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "hsl(var(--primary))" }}
+                        name="Volumen"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* 1RM Chart */}
+              {chartData.some(d => d && "est1RM" in d && d.est1RM) && (
+                <Card>
+                  <CardContent className="py-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase">
+                      Geschätzte 1RM (kg)
+                    </h4>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 10 }}
+                          className="text-muted-foreground"
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10 }}
+                          className="text-muted-foreground"
+                          width={45}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="est1RM"
+                          stroke="hsl(var(--chart-5))"
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: "hsl(var(--chart-5))" }}
+                          name="Est. 1RM"
+                          connectNulls
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
               )}

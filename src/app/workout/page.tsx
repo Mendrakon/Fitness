@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, X, GripVertical, Trash2, MoreVertical, Check, MessageSquare, ChevronDown, ChevronUp
+  Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
+  ChevronDown, ChevronUp, Link2, Unlink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
 import { useTimer } from "@/contexts/timer-context";
@@ -25,7 +26,7 @@ import { useExercises } from "@/hooks/use-exercises";
 import { useSettings } from "@/hooks/use-settings";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
-import type { SetTag, RPE } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,12 +43,12 @@ export default function WorkoutPage() {
   const router = useRouter();
   const {
     activeWorkout, startEmptyWorkout, finishWorkout, discardWorkout,
-    addExercise, removeExercise, updateSet, addSet, removeSet,
+    addExercise, removeExercise, reorderExercises, updateSet, addSet, removeSet,
     toggleSetComplete, setSetTag, setSetRpe, updateExerciseNotes,
-    updateWorkoutNotes, updateWorkoutName, elapsedSeconds,
+    updateWorkoutNotes, updateWorkoutName, toggleSuperset, elapsedSeconds,
   } = useActiveWorkout();
   const { startTimer } = useTimer();
-  const { save } = useWorkouts();
+  const { save, getLastForExercise } = useWorkouts();
   const { saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
@@ -58,10 +59,8 @@ export default function WorkoutPage() {
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
-  const [showRpe, setShowRpe] = useState<string | null>(null);
   const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
 
-  // Start empty workout if none active
   if (!activeWorkout) {
     startEmptyWorkout();
     return null;
@@ -109,9 +108,42 @@ export default function WorkoutPage() {
     exerciseIds.forEach(id => addExercise(id));
   };
 
-  const getLastValues = (exerciseId: string): string => {
-    // Placeholder - will show previous values
-    return "";
+  // Drag & Drop reorder via simple move up/down
+  const handleMoveExercise = (index: number, direction: "up" | "down") => {
+    const exercises = activeWorkout.exercises;
+    const newIdx = direction === "up" ? index - 1 : index + 1;
+    if (newIdx < 0 || newIdx >= exercises.length) return;
+    const ids = exercises.map(e => e.id);
+    [ids[index], ids[newIdx]] = [ids[newIdx], ids[index]];
+    reorderExercises(ids);
+  };
+
+  // Get previous values for an exercise
+  const getPreviousSets = (exerciseId: string) => {
+    if (!settings.showPreviousValues) return null;
+    const prev = getLastForExercise(exerciseId);
+    return prev?.sets.filter(s => s.completed) ?? null;
+  };
+
+  // Superset color map: assign a color per supersetGroupId
+  const supersetColors: Record<string, string> = {};
+  const colorPalette = [
+    "border-blue-500", "border-green-500", "border-orange-500",
+    "border-purple-500", "border-pink-500", "border-cyan-500",
+  ];
+  let colorIdx = 0;
+  activeWorkout.exercises.forEach(e => {
+    if (e.supersetGroupId && !supersetColors[e.supersetGroupId]) {
+      supersetColors[e.supersetGroupId] = colorPalette[colorIdx % colorPalette.length];
+      colorIdx++;
+    }
+  });
+
+  // Check if exercise is in superset with the next exercise
+  const isLinkedWithNext = (idx: number) => {
+    const curr = activeWorkout.exercises[idx];
+    const next = activeWorkout.exercises[idx + 1];
+    return curr?.supersetGroupId && next?.supersetGroupId === curr.supersetGroupId;
   };
 
   return (
@@ -152,12 +184,20 @@ export default function WorkoutPage() {
       )}
 
       {/* Exercise List */}
-      {activeWorkout.exercises.map((we) => {
+      {activeWorkout.exercises.map((we, exerciseIdx) => {
         const exercise = getExercise(we.exerciseId);
         if (!exercise) return null;
 
+        const previousSets = getPreviousSets(we.exerciseId);
+
         return (
-          <Card key={we.id} className="overflow-hidden">
+          <React.Fragment key={we.id}>
+          <Card
+            className={cn(
+              "overflow-hidden",
+              we.supersetGroupId && `border-l-4 ${supersetColors[we.supersetGroupId]}`
+            )}
+          >
             <CardHeader className="flex flex-row items-center gap-2 py-2.5 px-3 bg-muted/30">
               <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
               <div className="flex-1 min-w-0">
@@ -177,6 +217,31 @@ export default function WorkoutPage() {
                   >
                     <MessageSquare className="mr-2 h-4 w-4" /> Notiz
                   </DropdownMenuItem>
+                  {exerciseIdx > 0 && (
+                    <DropdownMenuItem onClick={() => handleMoveExercise(exerciseIdx, "up")}>
+                      Nach oben
+                    </DropdownMenuItem>
+                  )}
+                  {exerciseIdx < activeWorkout.exercises.length - 1 && (
+                    <DropdownMenuItem onClick={() => handleMoveExercise(exerciseIdx, "down")}>
+                      Nach unten
+                    </DropdownMenuItem>
+                  )}
+                  {exerciseIdx < activeWorkout.exercises.length - 1 && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const nextEx = activeWorkout.exercises[exerciseIdx + 1];
+                        toggleSuperset(we.id, nextEx.id);
+                      }}
+                    >
+                      {isLinkedWithNext(exerciseIdx) ? (
+                        <><Unlink className="mr-2 h-4 w-4" /> Superset aufheben</>
+                      ) : (
+                        <><Link2 className="mr-2 h-4 w-4" /> Superset mit nächster</>
+                      )}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive"
                     onClick={() => removeExercise(we.id)}
@@ -188,6 +253,15 @@ export default function WorkoutPage() {
             </CardHeader>
 
             <CardContent className="p-0">
+              {/* Pinned note */}
+              {exercise.pinnedNote && (
+                <div className="px-3 pt-2">
+                  <p className="text-xs text-muted-foreground italic bg-muted/50 rounded px-2 py-1">
+                    📌 {exercise.pinnedNote}
+                  </p>
+                </div>
+              )}
+
               {/* Notes */}
               {expandedNotes[we.id] && (
                 <div className="px-3 pt-2">
@@ -201,8 +275,12 @@ export default function WorkoutPage() {
               )}
 
               {/* Set Table Header */}
-              <div className="grid grid-cols-[36px_1fr_1fr_40px] gap-1 px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase">
+              <div className={cn(
+                "grid gap-1 px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase",
+                previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]"
+              )}>
                 <span className="text-center">Set</span>
+                {previousSets && <span className="text-center">Vorher</span>}
                 <span className="text-center">{settings.weightUnit.toUpperCase()}</span>
                 <span className="text-center">Wdh</span>
                 <span className="text-center">
@@ -211,77 +289,94 @@ export default function WorkoutPage() {
               </div>
 
               {/* Sets */}
-              {we.sets.map((set, setIdx) => (
-                <div key={set.id}>
-                  <div
-                    className={cn(
-                      "grid grid-cols-[36px_1fr_1fr_40px] gap-1 items-center px-3 py-1.5",
-                      set.completed && "bg-primary/5",
-                      set.tag === "warmup" && "opacity-70"
-                    )}
-                  >
-                    {/* Set Number / Tag */}
-                    <button
-                      className="flex items-center justify-center"
-                      onClick={() => handleCycleTag(we.id, set.id, set.tag)}
-                    >
-                      {set.tag ? (
-                        <span className={cn("text-[10px] font-bold rounded px-1.5 py-0.5", TAG_LABELS[set.tag].color)}>
-                          {TAG_LABELS[set.tag].label}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-muted-foreground">{setIdx + 1}</span>
+              {we.sets.map((set, setIdx) => {
+                const prevSet = previousSets?.[setIdx];
+                return (
+                  <div key={set.id}>
+                    <div
+                      className={cn(
+                        "grid gap-1 items-center px-3 py-1.5",
+                        previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]",
+                        set.completed && "bg-primary/5",
+                        set.tag === "warmup" && "opacity-70"
                       )}
-                    </button>
+                    >
+                      {/* Set Number / Tag */}
+                      <button
+                        className="flex items-center justify-center"
+                        onClick={() => handleCycleTag(we.id, set.id, set.tag)}
+                      >
+                        {set.tag ? (
+                          <span className={cn("text-[10px] font-bold rounded px-1.5 py-0.5", TAG_LABELS[set.tag].color)}>
+                            {TAG_LABELS[set.tag].label}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium text-muted-foreground">{setIdx + 1}</span>
+                        )}
+                      </button>
 
-                    {/* Weight */}
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="-"
-                      value={set.weight ?? ""}
-                      onChange={e =>
-                        updateSet(we.id, set.id, {
-                          weight: e.target.value ? parseFloat(e.target.value) : null,
-                        })
-                      }
-                      className="h-9 text-center text-sm font-medium border-muted/50"
-                    />
+                      {/* Previous values */}
+                      {previousSets && (
+                        <div className="text-center">
+                          {prevSet ? (
+                            <span className="text-[11px] text-muted-foreground">
+                              {prevSet.weight ?? "-"}×{prevSet.reps ?? "-"}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground/40">-</span>
+                          )}
+                        </div>
+                      )}
 
-                    {/* Reps */}
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="-"
-                      value={set.reps ?? ""}
-                      onChange={e =>
-                        updateSet(we.id, set.id, {
-                          reps: e.target.value ? parseInt(e.target.value) : null,
-                        })
-                      }
-                      className="h-9 text-center text-sm font-medium border-muted/50"
-                    />
-
-                    {/* Complete Checkbox */}
-                    <div className="flex justify-center">
-                      <Checkbox
-                        checked={set.completed}
-                        onCheckedChange={() => handleToggleSet(we.id, set.id)}
-                        className="h-6 w-6 rounded-md"
+                      {/* Weight */}
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder={prevSet?.weight?.toString() ?? "-"}
+                        value={set.weight ?? ""}
+                        onChange={e =>
+                          updateSet(we.id, set.id, {
+                            weight: e.target.value ? parseFloat(e.target.value) : null,
+                          })
+                        }
+                        className="h-9 text-center text-sm font-medium border-muted/50"
                       />
-                    </div>
-                  </div>
 
-                  {/* RPE row */}
-                  {set.rpe && (
-                    <div className="flex justify-end px-3 pb-1">
-                      <Badge variant="outline" className="text-[10px] h-5">
-                        RPE {set.rpe}
-                      </Badge>
+                      {/* Reps */}
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder={prevSet?.reps?.toString() ?? "-"}
+                        value={set.reps ?? ""}
+                        onChange={e =>
+                          updateSet(we.id, set.id, {
+                            reps: e.target.value ? parseInt(e.target.value) : null,
+                          })
+                        }
+                        className="h-9 text-center text-sm font-medium border-muted/50"
+                      />
+
+                      {/* Complete Checkbox */}
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={set.completed}
+                          onCheckedChange={() => handleToggleSet(we.id, set.id)}
+                          className="h-6 w-6 rounded-md"
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* RPE row */}
+                    {set.rpe && (
+                      <div className="flex justify-end px-3 pb-1">
+                        <Badge variant="outline" className="text-[10px] h-5">
+                          RPE {set.rpe}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* Add Set + RPE */}
               <div className="flex items-center justify-between px-3 py-2 border-t border-border/50">
@@ -311,6 +406,7 @@ export default function WorkoutPage() {
                         RPE {val}
                       </DropdownMenuItem>
                     ))}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => {
                         const lastSet = we.sets[we.sets.length - 1];
@@ -324,6 +420,16 @@ export default function WorkoutPage() {
               </div>
             </CardContent>
           </Card>
+          {/* Superset connector */}
+          {isLinkedWithNext(exerciseIdx) && (
+            <div className="flex items-center justify-center -my-1.5">
+              <div className={cn(
+                "w-0.5 h-4 rounded-full",
+                supersetColors[we.supersetGroupId!]?.replace("border-", "bg-")
+              )} />
+            </div>
+          )}
+          </React.Fragment>
         );
       })}
 

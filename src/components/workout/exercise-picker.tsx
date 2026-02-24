@@ -5,9 +5,7 @@ import { Search, Plus, Check } from "lucide-react";
 import { useExercises } from "@/hooks/use-exercises";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -74,12 +72,13 @@ export function ExercisePicker({ open, onOpenChange, onSelect, multiSelect = tru
 
   return (
     <Drawer open={open} onOpenChange={handleClose}>
-      <DrawerContent className="max-h-[85dvh]">
-        <DrawerHeader className="pb-2">
+      <DrawerContent className="flex flex-col max-h-[90dvh]">
+        <DrawerHeader className="pb-2 shrink-0">
           <DrawerTitle>Übung hinzufügen</DrawerTitle>
         </DrawerHeader>
 
-        <div className="px-4 pb-2">
+        {/* Search */}
+        <div className="px-4 pb-2 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -91,28 +90,40 @@ export function ExercisePicker({ open, onOpenChange, onSelect, multiSelect = tru
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 no-scrollbar">
-          <Badge
-            variant={selectedGroup === null ? "default" : "outline"}
-            className="cursor-pointer shrink-0"
-            onClick={() => setSelectedGroup(null)}
-          >
-            Alle
-          </Badge>
-          {muscleGroups.map(g => (
-            <Badge
-              key={g}
-              variant={selectedGroup === g ? "default" : "outline"}
-              className="cursor-pointer shrink-0"
-              onClick={() => setSelectedGroup(g)}
+        {/* Muscle group filter chips - horizontal scroll */}
+        <div className="shrink-0 px-4 pb-3">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
+            <button
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                selectedGroup === null
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              )}
+              onClick={() => setSelectedGroup(null)}
             >
-              {MUSCLE_GROUP_LABELS[g]}
-            </Badge>
-          ))}
+              Alle
+            </button>
+            {muscleGroups.map(g => (
+              <button
+                key={g}
+                className={cn(
+                  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  selectedGroup === g
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}
+                onClick={() => setSelectedGroup(g)}
+              >
+                {MUSCLE_GROUP_LABELS[g]}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <ScrollArea className="flex-1 px-4" style={{ height: "45dvh" }}>
-          <div className="space-y-1 pb-4">
+        {/* Exercise list - scrollable */}
+        <div className="flex-1 overflow-y-auto px-4 min-h-0">
+          <div className="space-y-0.5 pb-2">
             {filtered.map(exercise => {
               const isSelected = selectedIds.includes(exercise.id);
               return (
@@ -120,14 +131,14 @@ export function ExercisePicker({ open, onOpenChange, onSelect, multiSelect = tru
                   key={exercise.id}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors",
-                    isSelected ? "bg-primary/10" : "hover:bg-accent active:bg-accent"
+                    isSelected ? "bg-primary/10" : "active:bg-accent"
                   )}
                   onClick={() => handleSelect(exercise.id)}
                 >
                   {multiSelect && (
                     <div className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                      isSelected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30"
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
+                      isSelected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40"
                     )}>
                       {isSelected && <Check className="h-3 w-3" />}
                     </div>
@@ -146,16 +157,21 @@ export function ExercisePicker({ open, onOpenChange, onSelect, multiSelect = tru
               </p>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
+        {/* Sticky confirm button at bottom */}
         {multiSelect && (
-          <DrawerFooter className="pt-2">
-            <Button onClick={handleConfirm} disabled={selectedIds.length === 0}>
+          <div className="shrink-0 border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Button
+              className="w-full h-12 text-base font-semibold"
+              onClick={handleConfirm}
+              disabled={selectedIds.length === 0}
+            >
               {selectedIds.length > 0
                 ? `${selectedIds.length} Übung${selectedIds.length > 1 ? "en" : ""} hinzufügen`
                 : "Übungen auswählen"}
             </Button>
-          </DrawerFooter>
+          </div>
         )}
       </DrawerContent>
     </Drawer>

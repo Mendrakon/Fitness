@@ -24,6 +24,7 @@ interface ActiveWorkoutContextValue {
   updateExerciseNotes: (exerciseInstanceId: string, notes: string) => void;
   updateWorkoutNotes: (notes: string) => void;
   updateWorkoutName: (name: string) => void;
+  toggleSuperset: (exerciseInstanceId1: string, exerciseInstanceId2: string) => void;
   elapsedSeconds: number;
 }
 
@@ -270,6 +271,42 @@ export function ActiveWorkoutProvider({ children }: { children: React.ReactNode 
     [mutate]
   );
 
+  const toggleSuperset = useCallback(
+    (id1: string, id2: string) => {
+      mutate(w => {
+        const ex1 = w.exercises.find(e => e.id === id1);
+        const ex2 = w.exercises.find(e => e.id === id2);
+        if (!ex1 || !ex2) return w;
+
+        // If both share a group, unlink them
+        if (ex1.supersetGroupId && ex1.supersetGroupId === ex2.supersetGroupId) {
+          return {
+            ...w,
+            exercises: w.exercises.map(e => {
+              if (e.id === id1 || e.id === id2) {
+                return { ...e, supersetGroupId: undefined };
+              }
+              return e;
+            }),
+          };
+        }
+
+        // Otherwise, link them with a shared group ID
+        const groupId = ex1.supersetGroupId || ex2.supersetGroupId || uuid();
+        return {
+          ...w,
+          exercises: w.exercises.map(e => {
+            if (e.id === id1 || e.id === id2) {
+              return { ...e, supersetGroupId: groupId };
+            }
+            return e;
+          }),
+        };
+      });
+    },
+    [mutate]
+  );
+
   return (
     <ActiveWorkoutContext.Provider
       value={{
@@ -290,6 +327,7 @@ export function ActiveWorkoutProvider({ children }: { children: React.ReactNode 
         updateExerciseNotes,
         updateWorkoutNotes,
         updateWorkoutName,
+        toggleSuperset,
         elapsedSeconds,
       }}
     >
