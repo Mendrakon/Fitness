@@ -62,8 +62,20 @@ export default function WorkoutPage() {
   const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
 
   if (!activeWorkout) {
-    startEmptyWorkout();
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 px-6 pt-24">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Plus className="h-12 w-12 text-muted-foreground/50" />
+          <h2 className="text-xl font-bold">Kein aktives Workout</h2>
+          <p className="text-sm text-muted-foreground">
+            Starte ein leeres Workout oder wähle eine Vorlage auf der Startseite.
+          </p>
+        </div>
+        <Button className="w-full max-w-xs h-12 text-base font-semibold" onClick={startEmptyWorkout}>
+          Leeres Workout starten
+        </Button>
+      </div>
+    );
   }
 
   const handleFinish = () => {
