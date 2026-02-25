@@ -26,7 +26,10 @@ import { useExercises } from "@/hooks/use-exercises";
 import { useSettings } from "@/hooks/use-settings";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
-import type { SetTag, RPE, WorkoutExercise } from "@/lib/types";
+import { detectPRs } from "@/lib/pr-detection";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise, PREvent, Workout } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -48,7 +51,7 @@ export default function WorkoutPage() {
     updateWorkoutNotes, updateWorkoutName, toggleSuperset, elapsedSeconds,
   } = useActiveWorkout();
   const { startTimer, timeRemaining, totalDuration, isRunning, activeExerciseId, activeSetId, skipTimer, addTime, setVisible } = useTimer();
-  const { save, getLastForExercise } = useWorkouts();
+  const { workouts, save, getLastForExercise } = useWorkouts();
   const { saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
@@ -82,6 +85,42 @@ export default function WorkoutPage() {
     const finished = finishWorkout();
     if (finished) {
       save(finished);
+
+      // PR Detection — read workouts directly from localStorage for reliability
+      let allWorkouts: Workout[] = [];
+      try {
+        allWorkouts = JSON.parse(
+          localStorage.getItem(STORAGE_KEYS.WORKOUTS) || "[]"
+        );
+      } catch { /* empty */ }
+
+      const prs = detectPRs(finished, allWorkouts, settings);
+      if (prs.length > 0) {
+        try {
+          const existing: PREvent[] = JSON.parse(
+            localStorage.getItem(STORAGE_KEYS.PR_EVENTS) || "[]"
+          );
+          const existingIds = new Set(existing.map((e) => e.id));
+          const newPrs = prs.filter((e) => !existingIds.has(e.id));
+          if (newPrs.length > 0) {
+            localStorage.setItem(
+              STORAGE_KEYS.PR_EVENTS,
+              JSON.stringify([...newPrs, ...existing])
+            );
+          }
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.PR_EVENTS, JSON.stringify(prs));
+        }
+
+        for (const pr of prs) {
+          const exName = getExercise(pr.exerciseId)?.name ?? "Übung";
+          toast.success(`🏆 Neuer PR: ${exName}`, {
+            description: `${PR_METRIC_LABELS[pr.metric]}: ${formatPRDiff(pr)}`,
+            duration: 5000,
+          });
+        }
+      }
+
       if (saveAsTemplate && templateName.trim()) {
         saveWorkoutAsTemplate(finished, templateName.trim());
         toast.success("Workout gespeichert & Vorlage erstellt");
@@ -90,7 +129,8 @@ export default function WorkoutPage() {
       }
     }
     setFinishDialogOpen(false);
-    router.push("/");
+    // Small delay to let toasts render before navigating
+    setTimeout(() => router.push("/"), 100);
   };
 
   const handleDiscard = () => {

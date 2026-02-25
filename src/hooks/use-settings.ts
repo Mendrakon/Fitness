@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useLocalStorage } from "./use-local-storage";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import type { AppSettings } from "@/lib/types";
@@ -13,17 +13,27 @@ const DEFAULT_SETTINGS: AppSettings = {
   restTimerAutoStart: true,
   showPreviousValues: true,
   theme: "system",
+  prThresholdWeight: 2.5,
+  prThresholdReps: 1,
+  prThresholdVolumePercent: 5,
+  prThreshold1RMPercent: 2,
 };
 
 export function useSettings() {
-  const [settings, setSettings] = useLocalStorage<AppSettings>(
+  const [stored, setSettings] = useLocalStorage<AppSettings>(
     STORAGE_KEYS.SETTINGS,
     DEFAULT_SETTINGS
   );
 
+  // Always merge with defaults so new fields are never undefined
+  const settings = useMemo(
+    () => ({ ...DEFAULT_SETTINGS, ...stored }),
+    [stored]
+  );
+
   const update = useCallback(
     (updates: Partial<AppSettings>) => {
-      setSettings(prev => ({ ...prev, ...updates }));
+      setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, ...updates }));
     },
     [setSettings]
   );

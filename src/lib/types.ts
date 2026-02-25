@@ -103,6 +103,10 @@ export interface AppSettings {
   restTimerAutoStart: boolean;
   showPreviousValues: boolean;
   theme: ThemeMode;
+  prThresholdWeight: number;
+  prThresholdReps: number;
+  prThresholdVolumePercent: number;
+  prThreshold1RMPercent: number;
 }
 
 export interface PersonalRecord {
@@ -111,6 +115,46 @@ export interface PersonalRecord {
   bestVolume: { volume: number; date: string } | null;
   estimated1RM: { value: number; date: string } | null;
   bestByReps: Record<number, { weight: number; date: string }>;
+}
+
+export type PRMetric = "weight" | "reps" | "volume" | "estimated1rm";
+
+export const PR_METRIC_LABELS: Record<PRMetric, string> = {
+  weight: "Gewicht",
+  reps: "Wiederholungen",
+  volume: "Volumen",
+  estimated1rm: "Gesch. 1RM",
+};
+
+export interface PREvent {
+  id: string;
+  exerciseId: string;
+  date: string;
+  workoutId: string;
+  metric: PRMetric;
+  newValue: number;
+  oldValue: number;
+  diff: number;
+  diffPercent: number;
+  weight: number;
+  reps: number;
+  volume: number;
+  estimated1rm: number;
+}
+
+export function formatPRDiff(pr: PREvent): string {
+  // First-ever PR (no previous data)
+  if (pr.oldValue === 0) {
+    if (pr.metric === "weight") return `${pr.newValue} kg`;
+    if (pr.metric === "reps") return `${pr.newValue} Wdh`;
+    if (pr.metric === "volume") return `${pr.newValue} kg`;
+    return `${pr.newValue}`;
+  }
+  // Improvement over previous PR
+  if (pr.metric === "reps") return `+${pr.diff} Wdh`;
+  if (pr.metric === "weight") return `+${pr.diff} kg`;
+  if (pr.metric === "volume") return `+${pr.diffPercent}% Vol`;
+  return `+${pr.diffPercent}% 1RM`;
 }
 
 export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {

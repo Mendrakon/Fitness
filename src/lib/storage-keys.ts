@@ -6,4 +6,5 @@ export const STORAGE_KEYS = {
   CUSTOM_EXERCISES: "fitness-custom-exercises",
   MEASUREMENTS: "fitness-measurements",
   SETTINGS: "fitness-settings",
+  PR_EVENTS: "fitness-pr-events",
 } as const;
