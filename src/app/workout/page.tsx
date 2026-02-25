@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
-  ChevronDown, ChevronUp, Link2, Unlink
+  ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,7 @@ export default function WorkoutPage() {
     toggleSetComplete, setSetTag, setSetRpe, updateExerciseNotes,
     updateWorkoutNotes, updateWorkoutName, toggleSuperset, elapsedSeconds,
   } = useActiveWorkout();
-  const { startTimer } = useTimer();
+  const { startTimer, timeRemaining, totalDuration, isRunning, activeExerciseId, activeSetId, skipTimer, addTime, setVisible } = useTimer();
   const { save, getLastForExercise } = useWorkouts();
   const { saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
@@ -100,13 +100,24 @@ export default function WorkoutPage() {
   };
 
   const handleToggleSet = (exerciseInstanceId: string, setId: string) => {
-    const completed = toggleSetComplete(exerciseInstanceId, setId);
-    if (completed && settings.restTimerAutoStart) {
-      const exercise = activeWorkout.exercises.find(e => e.id === exerciseInstanceId);
-      const set = exercise?.sets.find(s => s.id === setId);
+    // Check current state BEFORE toggling
+    const exercise = activeWorkout.exercises.find(e => e.id === exerciseInstanceId);
+    const set = exercise?.sets.find(s => s.id === setId);
+    const wasCompleted = set?.completed ?? false;
+
+    toggleSetComplete(exerciseInstanceId, setId);
+
+    // If we just completed the set (was not completed before), start timer
+    if (!wasCompleted && settings.restTimerAutoStart) {
       const timerDuration =
         set?.tag === "warmup" ? settings.defaultRestTimerWarmup : settings.defaultRestTimerWork;
-      startTimer(timerDuration);
+      startTimer(timerDuration, exerciseInstanceId, setId);
+    }
+    // If unchecking, stop timer for this set
+    if (wasCompleted) {
+      if (activeExerciseId === exerciseInstanceId && activeSetId === setId) {
+        skipTimer();
+      }
     }
   };
 
@@ -384,6 +395,51 @@ export default function WorkoutPage() {
                         <Badge variant="outline" className="text-[10px] h-5">
                           RPE {set.rpe}
                         </Badge>
+                      </div>
+                    )}
+
+                    {/* Inline Rest Timer — appears after the set that triggered it */}
+                    {activeExerciseId === we.id && activeSetId === set.id && (isRunning || timeRemaining > 0) && (
+                      <div className="mx-3 my-1.5 rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <Timer className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm font-bold tabular-nums text-primary">
+                              {formatDuration(timeRemaining)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent"
+                              onClick={() => addTime(-15)}
+                            >
+                              <Minus className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                            <button
+                              className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent"
+                              onClick={() => addTime(15)}
+                            >
+                              <Plus className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                            <button
+                              className="h-6 px-1.5 flex items-center justify-center rounded hover:bg-accent text-[11px] text-muted-foreground font-medium"
+                              onClick={() => skipTimer()}
+                            >
+                              <SkipForward className="h-3 w-3 mr-0.5" /> Skip
+                            </button>
+                          </div>
+                        </div>
+                        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-1000 ease-linear",
+                              timeRemaining > 0 ? "bg-primary" : "bg-green-500"
+                            )}
+                            style={{
+                              width: `${totalDuration > 0 ? ((totalDuration - timeRemaining) / totalDuration) * 100 : 100}%`,
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>

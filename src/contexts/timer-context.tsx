@@ -7,7 +7,9 @@ interface TimerContextValue {
   totalDuration: number;
   isRunning: boolean;
   isVisible: boolean;
-  startTimer: (seconds: number) => void;
+  activeExerciseId: string | null;
+  activeSetId: string | null;
+  startTimer: (seconds: number, exerciseInstanceId?: string, setId?: string) => void;
   skipTimer: () => void;
   addTime: (seconds: number) => void;
   setVisible: (visible: boolean) => void;
@@ -20,6 +22,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [totalDuration, setTotalDuration] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isVisible, setVisible] = useState(false);
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -37,12 +41,14 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startTimer = useCallback(
-    (seconds: number) => {
+    (seconds: number, exerciseInstanceId?: string, setId?: string) => {
       clearTimer();
       setTotalDuration(seconds);
       setTimeRemaining(seconds);
       setIsRunning(true);
-      setVisible(true);
+      setVisible(false);
+      setActiveExerciseId(exerciseInstanceId ?? null);
+      setActiveSetId(setId ?? null);
       intervalRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -65,6 +71,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     setTimeRemaining(0);
     setIsRunning(false);
     setVisible(false);
+    setActiveExerciseId(null);
+    setActiveSetId(null);
   }, [clearTimer]);
 
   const addTime = useCallback((seconds: number) => {
@@ -78,7 +86,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <TimerContext.Provider
-      value={{ timeRemaining, totalDuration, isRunning, isVisible, startTimer, skipTimer, addTime, setVisible }}
+      value={{ timeRemaining, totalDuration, isRunning, isVisible, activeExerciseId, activeSetId, startTimer, skipTimer, addTime, setVisible }}
     >
       {children}
     </TimerContext.Provider>

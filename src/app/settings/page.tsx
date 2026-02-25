@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Upload, Trash2, Dumbbell, Scale, Clock } from "lucide-react";
+import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ import { useMeasurements } from "@/hooks/use-measurements";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import type { WeightUnit } from "@/lib/types";
+import type { WeightUnit, ThemeMode } from "@/lib/types";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -191,7 +191,30 @@ export default function SettingsPage() {
           <CardHeader className="py-2.5 px-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase">Anzeige</p>
           </CardHeader>
-          <CardContent className="py-2">
+          <CardContent className="py-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Design</Label>
+              <div className="flex rounded-lg border p-0.5 gap-0.5">
+                {([
+                  { value: "light" as ThemeMode, icon: Sun, label: "Hell" },
+                  { value: "system" as ThemeMode, icon: Monitor, label: "System" },
+                  { value: "dark" as ThemeMode, icon: Moon, label: "Dunkel" },
+                ]).map(({ value, icon: Icon, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => update({ theme: value })}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      settings.theme === value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <Label>Vorherige Werte anzeigen</Label>
               <Switch

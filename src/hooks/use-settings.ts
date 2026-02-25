@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   restTimerSound: true,
   restTimerAutoStart: true,
   showPreviousValues: true,
+  theme: "system",
 };
 
 export function useSettings() {

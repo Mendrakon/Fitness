@@ -93,6 +93,8 @@ export interface BodyMeasurement {
   calories: number | null;
 }
 
+export type ThemeMode = "light" | "dark" | "system";
+
 export interface AppSettings {
   weightUnit: WeightUnit;
   defaultRestTimerWork: number;
@@ -100,6 +102,7 @@ export interface AppSettings {
   restTimerSound: boolean;
   restTimerAutoStart: boolean;
   showPreviousValues: boolean;
+  theme: ThemeMode;
 }
 
 export interface PersonalRecord {
