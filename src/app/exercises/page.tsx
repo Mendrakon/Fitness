@@ -150,7 +150,7 @@ export default function ExercisesPage() {
       </div>
 
       {/* Create Exercise Drawer */}
-      <Drawer open={createOpen} onOpenChange={setCreateOpen}>
+      <Drawer open={createOpen} onOpenChange={setCreateOpen} repositionInputs={false}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>Eigene Übung erstellen</DrawerTitle>
