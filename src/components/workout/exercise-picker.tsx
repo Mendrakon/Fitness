@@ -72,7 +72,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect, multiSelect = tru
 
   return (
     <Drawer open={open} onOpenChange={handleClose} repositionInputs={false}>
-      <DrawerContent className="flex flex-col max-h-[90dvh]">
+      <DrawerContent className="flex flex-col min-h-[70dvh] max-h-[90dvh]">
         <DrawerHeader className="pb-2 shrink-0">
           <DrawerTitle>Übung hinzufügen</DrawerTitle>
         </DrawerHeader>

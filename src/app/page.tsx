@@ -20,7 +20,7 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 export default function HomePage() {
   const router = useRouter();
-  const { activeWorkout, startEmptyWorkout, elapsedSeconds } = useActiveWorkout();
+  const { activeWorkout } = useActiveWorkout();
   const { workouts } = useWorkouts();
   const { templates } = useTemplates();
   const { getById: getExercise } = useExercises();
@@ -89,25 +89,34 @@ export default function HomePage() {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Schnellstart
         </h2>
-        <Button
-          className="w-full h-12 text-base font-semibold"
-          onClick={() => {
-            if (!activeWorkout) startEmptyWorkout();
-            router.push("/workout");
-          }}
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          {activeWorkout ? "Workout fortsetzen" : "Leeres Workout starten"}
-        </Button>
-        {templates.length > 0 && (
+        {activeWorkout ? (
           <Button
-            variant="outline"
-            className="w-full h-11"
-            onClick={() => router.push("/templates")}
+            className="w-full h-12 text-base font-semibold"
+            onClick={() => router.push("/workout")}
           >
-            <Dumbbell className="mr-2 h-4 w-4" />
-            Aus Vorlage starten
+            <Plus className="mr-2 h-5 w-5" />
+            Workout fortsetzen
           </Button>
+        ) : (
+          <>
+            {templates.length > 0 && (
+              <Button
+                className="w-full h-12 text-base font-semibold"
+                onClick={() => router.push("/templates")}
+              >
+                <Dumbbell className="mr-2 h-5 w-5" />
+                Aus Vorlage starten
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={() => router.push("/templates/new")}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Workout erstellen
+            </Button>
+          </>
         )}
       </div>
 
