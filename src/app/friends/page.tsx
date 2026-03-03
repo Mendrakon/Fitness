@@ -120,7 +120,15 @@ export default function FriendsPage() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") loadFriendships(currentUser.id);
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [currentUser, loadFriendships]);
 
   async function handleSearch() {
@@ -175,7 +183,7 @@ export default function FriendsPage() {
       return;
     }
 
-    if (currentUser) loadFriendships(currentUser.id);
+    if (currentUser) await loadFriendships(currentUser.id);
     toast.success(accept ? "Freundschaft angenommen!" : "Anfrage abgelehnt.");
   }
 
