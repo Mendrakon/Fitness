@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase";
 interface Profile {
   id: string;
   username: string;
+  avatar_url?: string | null;
 }
 
 interface Friendship {
@@ -25,9 +26,18 @@ interface Friendship {
   receiver: Profile;
 }
 
-function UserAvatar({ username, size = "md" }: { username: string; size?: "sm" | "md" }) {
+function UserAvatar({ username, avatarUrl, size = "md" }: { username: string; avatarUrl?: string | null; size?: "sm" | "md" }) {
   const initials = username.slice(0, 2).toUpperCase();
   const sizeClass = size === "sm" ? "h-9 w-9 text-xs" : "h-10 w-10 text-sm";
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={username}
+        className={`${sizeClass} shrink-0 rounded-full object-cover`}
+      />
+    );
+  }
   return (
     <div className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold`}>
       {initials}
@@ -52,8 +62,8 @@ export default function FriendsPage() {
       .from("friendships")
       .select(
         "id, sender_id, receiver_id, status, " +
-        "sender:profiles!friendships_sender_id_fkey(id, username), " +
-        "receiver:profiles!friendships_receiver_id_fkey(id, username)"
+        "sender:profiles!friendships_sender_id_fkey(id, username, avatar_url), " +
+        "receiver:profiles!friendships_receiver_id_fkey(id, username, avatar_url)"
       )
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
 
@@ -89,7 +99,7 @@ export default function FriendsPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, username")
+        .select("id, username, avatar_url")
         .eq("id", user.id)
         .single();
 
@@ -138,7 +148,7 @@ export default function FriendsPage() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username")
+      .select("id, username, avatar_url")
       .ilike("username", `%${searchQuery.trim()}%`)
       .neq("id", currentUser.id)
       .limit(10);
@@ -235,7 +245,7 @@ export default function FriendsPage() {
         ) : currentUser ? (
           <Card>
             <CardContent className="flex items-center gap-3 py-3">
-              <UserAvatar username={currentUser.username} />
+              <UserAvatar username={currentUser.username} avatarUrl={currentUser.avatar_url} />
               <div>
                 <p className="font-semibold text-sm">@{currentUser.username}</p>
                 <p className="text-xs text-muted-foreground">Dein Profil</p>
@@ -269,7 +279,7 @@ export default function FriendsPage() {
               return (
                 <Card key={user.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={user.username} size="sm" />
+                    <UserAvatar username={user.username} avatarUrl={user.avatar_url} size="sm" />
                     <span className="flex-1 text-sm font-medium">@{user.username}</span>
                     {isFriend ? (
                       <span className="text-xs text-muted-foreground">Bereits befreundet</span>
@@ -338,7 +348,7 @@ export default function FriendsPage() {
               friends.map((friend) => (
                 <Card key={friend.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={friend.username} size="sm" />
+                    <UserAvatar username={friend.username} avatarUrl={friend.avatar_url} size="sm" />
                     <span className="flex-1 text-sm font-medium">@{friend.username}</span>
                     <Button
                       size="icon"
@@ -384,7 +394,7 @@ export default function FriendsPage() {
               incomingRequests.map((req) => (
                 <Card key={req.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={req.sender.username} size="sm" />
+                    <UserAvatar username={req.sender.username} avatarUrl={req.sender.avatar_url} size="sm" />
                     <span className="flex-1 text-sm font-medium">@{req.sender.username}</span>
                     <div className="flex gap-1.5">
                       <Button size="sm" className="gap-1.5 h-8" onClick={() => respondToRequest(req.id, true)}>

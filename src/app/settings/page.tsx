@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor, LogOut, User, Pencil, Check, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor, LogOut, User, Pencil, Check, X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +35,13 @@ export default function SettingsPage() {
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -45,15 +49,63 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setEmail(user.email ?? "");
+      setUserId(user.id);
       const { data } = await supabase
         .from("profiles")
-        .select("username")
+        .select("username, avatar_url")
         .eq("id", user.id)
         .single();
-      if (data) setUsername(data.username);
+      if (data) {
+        setUsername(data.username);
+        setAvatarUrl(data.avatar_url ?? null);
+      }
     };
     loadProfile();
   }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Bild darf maximal 5 MB groß sein");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      toast.error("Upload fehlgeschlagen");
+      setUploadingAvatar(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(path);
+
+    // Add cache-buster so browser reloads the new image
+    const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: urlWithCacheBust })
+      .eq("id", userId);
+
+    setAvatarUrl(urlWithCacheBust);
+    setUploadingAvatar(false);
+    toast.success("Profilbild gespeichert");
+
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  };
 
   const handleSaveUsername = async () => {
     const trimmed = newUsername.trim();
@@ -179,9 +231,40 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="py-2 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                <User className="h-5 w-5 text-primary" />
-              </div>
+              {/* Avatar */}
+              <button
+                className="relative shrink-0 h-14 w-14 rounded-full overflow-hidden focus:outline-none group"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                title="Profilbild ändern"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profilbild"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-primary/10">
+                    <User className="h-7 w-7 text-primary" />
+                  </div>
+                )}
+                {/* Camera overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  {uploadingAvatar ? (
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
               <div className="flex-1 min-w-0">
                 {editingUsername ? (
                   <div className="flex items-center gap-1.5">
