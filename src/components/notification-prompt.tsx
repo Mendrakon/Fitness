@@ -45,7 +45,7 @@ export function NotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] left-0 right-0 z-50 mx-auto max-w-lg px-4 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-[5.5rem] left-0 right-0 z-50 mx-auto max-w-lg px-4 animate-in slide-in-from-bottom-4 duration-300">
       <div className="rounded-2xl border border-border bg-background shadow-xl p-4 flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
           <Bell className="h-5 w-5 text-primary" />

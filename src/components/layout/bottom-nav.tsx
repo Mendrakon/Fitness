@@ -26,10 +26,7 @@ export function BottomNav() {
   if (pathname === "/login" || pathname === "/register") return null;
 
   return (
-    <nav
-      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-    >
+    <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-lg items-end justify-around px-1 pt-1 pb-1">
         {tabs.map(tab => {
           const isActive = tab.href === "/"
