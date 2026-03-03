@@ -143,6 +143,7 @@ body {
   -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @supports (-webkit-touch-callout: none) {
@@ -150,6 +151,11 @@ body {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+}
+
+/* Content container: account for bottom nav + safe area */
+.main-content {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Fixed background behind iOS Dynamic Island / notch / status bar.
