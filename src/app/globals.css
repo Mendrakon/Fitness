@@ -159,7 +159,6 @@ body {
    and cause the fixed bottom-nav to "jump" between tabs. */
 .main-content {
   height: 100dvh;
-  height: -webkit-fill-available;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(5rem + var(--safe-area-bottom));
