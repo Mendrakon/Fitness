@@ -138,12 +138,8 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Keep bottom nav pinned on every device / browser combination. */
+/* Keep bottom nav pinned – GPU-layer promotion prevents iOS Safari scroll-jump. */
 .bottom-nav {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0;
-  right: 0;
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
@@ -158,8 +154,12 @@ body {
   }
 }
 
-/* Content container: account for bottom nav + safe area */
+/* Content container: account for bottom nav + safe area.
+   min-height ensures iOS Safari always sees a "tall" page so its toolbar
+   collapses and the fixed bottom-nav truly sits at the screen edge. */
 .main-content {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   padding-bottom: calc(5rem + var(--safe-area-bottom));
 }
 
