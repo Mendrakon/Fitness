@@ -21,7 +21,8 @@ interface Friendship {
   sender_id: string;
   receiver_id: string;
   status: "pending" | "accepted" | "declined";
-  profiles: Profile;
+  sender: Profile;
+  receiver: Profile;
 }
 
 function UserAvatar({ username, size = "md" }: { username: string; size?: "sm" | "md" }) {
@@ -49,7 +50,11 @@ export default function FriendsPage() {
 
     const { data, error } = await supabase
       .from("friendships")
-      .select("id, sender_id, receiver_id, status, profiles!friendships_receiver_id_fkey(id, username)")
+      .select(
+        "id, sender_id, receiver_id, status, " +
+        "sender:profiles!friendships_sender_id_fkey(id, username), " +
+        "receiver:profiles!friendships_receiver_id_fkey(id, username)"
+      )
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
 
     if (error) return;
@@ -60,10 +65,7 @@ export default function FriendsPage() {
 
     for (const row of (data ?? []) as unknown as Friendship[]) {
       if (row.status === "accepted") {
-        // Der jeweils andere User
-        const other = row.sender_id === userId
-          ? { id: row.receiver_id, username: row.profiles.username }
-          : row.profiles;
+        const other = row.sender_id === userId ? row.receiver : row.sender;
         accepted.push(other);
       } else if (row.status === "pending") {
         if (row.receiver_id === userId) {
@@ -160,15 +162,25 @@ export default function FriendsPage() {
     if (!currentUser) return;
     const supabase = createClient();
 
-    await supabase
-      .from("friendships")
-      .delete()
-      .or(
-        `and(sender_id.eq.${currentUser.id},receiver_id.eq.${friendId}),` +
-        `and(sender_id.eq.${friendId},receiver_id.eq.${currentUser.id})`
-      );
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase
+        .from("friendships")
+        .delete()
+        .eq("sender_id", currentUser.id)
+        .eq("receiver_id", friendId),
+      supabase
+        .from("friendships")
+        .delete()
+        .eq("sender_id", friendId)
+        .eq("receiver_id", currentUser.id),
+    ]);
 
-    loadFriendships(currentUser.id);
+    if (e1 || e2) {
+      toast.error("Freund konnte nicht entfernt werden.");
+      return;
+    }
+
+    await loadFriendships(currentUser.id);
     toast.success("Freund entfernt.");
   }
 
@@ -343,8 +355,8 @@ export default function FriendsPage() {
               incomingRequests.map((req) => (
                 <Card key={req.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={req.profiles.username} size="sm" />
-                    <span className="flex-1 text-sm font-medium">@{req.profiles.username}</span>
+                    <UserAvatar username={req.sender.username} size="sm" />
+                    <span className="flex-1 text-sm font-medium">@{req.sender.username}</span>
                     <div className="flex gap-1.5">
                       <Button size="sm" className="gap-1.5 h-8" onClick={() => respondToRequest(req.id, true)}>
                         <UserCheck className="h-3.5 w-3.5" />
