@@ -39,21 +39,31 @@ export function ActiveWorkoutProvider({ children }: { children: React.ReactNode 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (activeWorkout) {
-      const updateElapsed = () => {
-        const start = new Date(activeWorkout.startTime).getTime();
-        const now = Date.now();
-        setElapsedSeconds(Math.floor((now - start) / 1000));
-      };
-      updateElapsed();
-      intervalRef.current = setInterval(updateElapsed, 1000);
-      return () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    } else {
+    if (!activeWorkout) {
       setElapsedSeconds(0);
       if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
     }
+
+    const updateElapsed = () => {
+      const start = new Date(activeWorkout.startTime).getTime();
+      setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+    };
+
+    updateElapsed();
+    intervalRef.current = setInterval(updateElapsed, 1000);
+
+    // Sofort korrigieren wenn Screen wieder eingeschaltet wird
+    const handleVisibility = () => {
+      if (!document.hidden) updateElapsed();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkout?.startTime, !!activeWorkout, setElapsedSeconds]);
 
   const mutate = useCallback(

@@ -26,6 +26,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Timestamp wann der Timer ablaufen soll – bleibt korrekt auch wenn Screen aus ist
+  const endTimeRef = useRef<number | null>(null);
+  const isRunningRef = useRef(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -40,34 +43,41 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const finishTimer = useCallback(() => {
+    clearTimer();
+    isRunningRef.current = false;
+    setIsRunning(false);
+    endTimeRef.current = null;
+    try { audioRef.current?.play(); } catch {}
+  }, [clearTimer]);
+
   const startTimer = useCallback(
     (seconds: number, exerciseInstanceId?: string, setId?: string) => {
       clearTimer();
+      const endTime = Date.now() + seconds * 1000;
+      endTimeRef.current = endTime;
+      isRunningRef.current = true;
       setTotalDuration(seconds);
       setTimeRemaining(seconds);
       setIsRunning(true);
       setVisible(false);
       setActiveExerciseId(exerciseInstanceId ?? null);
       setActiveSetId(setId ?? null);
+
       intervalRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearTimer();
-            setIsRunning(false);
-            try {
-              audioRef.current?.play();
-            } catch {}
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+        if (!endTimeRef.current) return;
+        const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+        setTimeRemaining(remaining);
+        if (remaining <= 0) finishTimer();
+      }, 500); // 500ms damit Rücksprung nach Screen-on schnell ankommt
     },
-    [clearTimer]
+    [clearTimer, finishTimer]
   );
 
   const skipTimer = useCallback(() => {
     clearTimer();
+    endTimeRef.current = null;
+    isRunningRef.current = false;
     setTimeRemaining(0);
     setIsRunning(false);
     setVisible(false);
@@ -76,13 +86,27 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, [clearTimer]);
 
   const addTime = useCallback((seconds: number) => {
+    if (endTimeRef.current) {
+      endTimeRef.current += seconds * 1000;
+    }
     setTimeRemaining(prev => Math.max(0, prev + seconds));
     setTotalDuration(prev => Math.max(0, prev + seconds));
   }, []);
 
+  // Sofort korrigieren wenn Screen wieder eingeschaltet wird
   useEffect(() => {
-    return () => clearTimer();
-  }, [clearTimer]);
+    const handleVisibility = () => {
+      if (document.hidden || !isRunningRef.current || !endTimeRef.current) return;
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+      setTimeRemaining(remaining);
+      if (remaining <= 0) finishTimer();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearTimer();
+    };
+  }, [clearTimer, finishTimer]);
 
   return (
     <TimerContext.Provider
