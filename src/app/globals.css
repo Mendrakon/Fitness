@@ -48,7 +48,7 @@
 }
 
 :root {
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-bottom: 0px;
   --radius: 0.625rem;
   --background: oklch(0.98 0.005 250);
   --foreground: oklch(0.15 0.02 250);
@@ -147,17 +147,6 @@ body {
   will-change: transform;
 }
 
-/* Extend nav background past the physical screen edge to cover any gap
-   in PWA standalone mode where env(safe-area-inset-bottom) may be 0. */
-.bottom-nav::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -50px;
-  height: 50px;
-  background: inherit;
-}
 
 @supports (-webkit-touch-callout: none) {
   .bottom-nav {
