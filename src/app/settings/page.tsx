@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor } from "lucide-react";
+import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import type { WeightUnit, ThemeMode } from "@/lib/types";
+import { createClient } from "@/lib/supabase";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,6 +32,13 @@ export default function SettingsPage() {
   const { templates } = useTemplates();
   const { measurements } = useMeasurements();
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   const handleExport = () => {
     const data = {
@@ -244,6 +252,19 @@ export default function SettingsPage() {
               onClick={() => setClearDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" /> Alle Daten löschen
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Logout */}
+        <Card>
+          <CardContent className="py-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start text-destructive border-destructive/30"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Abmelden
             </Button>
           </CardContent>
         </Card>

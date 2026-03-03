@@ -2,22 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Clock, Dumbbell, User, Plus } from "lucide-react";
+import { Home, Clock, Dumbbell, User, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
 import { formatDuration } from "@/lib/calculations";
+import { usePendingRequests } from "@/hooks/use-pending-requests";
 
 const tabs = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/history", icon: Clock, label: "Verlauf" },
   { href: "/workout", icon: Plus, label: "Workout", isCenter: true },
   { href: "/exercises", icon: Dumbbell, label: "Übungen" },
+  { href: "/friends", icon: Users, label: "Freunde" },
   { href: "/settings", icon: User, label: "Profil" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
   const { activeWorkout, elapsedSeconds } = useActiveWorkout();
+  const pendingRequests = usePendingRequests();
+
+  if (pathname === "/login" || pathname === "/register") return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
@@ -58,6 +63,8 @@ export function BottomNav() {
             );
           }
 
+          const showBadge = tab.href === "/friends" && pendingRequests > 0;
+
           return (
             <Link
               key={tab.href}
@@ -67,7 +74,14 @@ export function BottomNav() {
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <div className="relative">
+                <Icon className="h-5 w-5" />
+                {showBadge && (
+                  <span className="absolute -top-1 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white leading-none">
+                    {pendingRequests > 9 ? "9+" : pendingRequests}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium">{tab.label}</span>
             </Link>
           );
