@@ -14,7 +14,7 @@ export function PageHeader({ title, showBack = false, rightAction }: PageHeaderP
   const router = useRouter();
 
   return (
-    <header className="sticky top-[env(safe-area-inset-top)] z-40 border-b border-border bg-background/95 backdrop-blur-md">
+    <header className="border-b border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-lg items-center gap-3 px-4">
         {showBack && (
           <Button

@@ -1,7 +1,7 @@
 {
-  "name": "FitTrack - Workout Tracker",
-  "short_name": "FitTrack",
-  "description": "Dein persönlicher Fitness-Tracker mit unbegrenzten Routinen",
+  "name": "FeetTrack - Fußlutsch Tracker",
+  "short_name": "FeetTrack",
+  "description": "Dein persönlicher Fußlutsch-Tracker mit unbegrenzten Routinen",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
