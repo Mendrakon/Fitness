@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
-  ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer
+  ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
-import type { SetTag, RPE, WorkoutExercise, PREvent, Workout } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise, PREvent, Workout, Template } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,6 +43,361 @@ const TAG_LABELS: Record<string, { label: string; color: string }> = {
 
 const RPE_VALUES: RPE[] = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
+// ── Example Templates ────────────────────────────────────────────────────────
+
+const EXAMPLE_TEMPLATES: Template[] = [
+  {
+    id: "example-push-a",
+    name: "Push A",
+    folderId: null,
+    notes: "Brust, Schultern & Trizeps",
+    lastUsed: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    exercises: [
+      { id: "et-push-1", exerciseId: "ex-bench-press", notes: "", sets: [
+        { id: "s1", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s2", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s3", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-push-2", exerciseId: "ex-incline-bench", notes: "", sets: [
+        { id: "s4", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s5", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s6", weight: null, reps: 10, tag: null, rpe: null },
+      ]},
+      { id: "et-push-3", exerciseId: "ex-db-ohp", notes: "", sets: [
+        { id: "s7", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s8", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s9", weight: null, reps: 10, tag: null, rpe: null },
+      ]},
+      { id: "et-push-4", exerciseId: "ex-lateral-raise", notes: "", sets: [
+        { id: "s10", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s11", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s12", weight: null, reps: 15, tag: null, rpe: null },
+      ]},
+      { id: "et-push-5", exerciseId: "ex-tricep-pushdown", notes: "", sets: [
+        { id: "s13", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s14", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s15", weight: null, reps: 12, tag: null, rpe: null },
+      ]},
+    ],
+  },
+  {
+    id: "example-pull-a",
+    name: "Pull A",
+    folderId: null,
+    notes: "Rücken & Bizeps",
+    lastUsed: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    exercises: [
+      { id: "et-pull-1", exerciseId: "ex-pull-up", notes: "", sets: [
+        { id: "s16", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s17", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s18", weight: null, reps: 8, tag: null, rpe: null },
+      ]},
+      { id: "et-pull-2", exerciseId: "ex-lat-pulldown", notes: "", sets: [
+        { id: "s19", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s20", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s21", weight: null, reps: 10, tag: null, rpe: null },
+      ]},
+      { id: "et-pull-3", exerciseId: "ex-barbell-row", notes: "", sets: [
+        { id: "s22", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s23", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s24", weight: null, reps: 8, tag: null, rpe: null },
+      ]},
+      { id: "et-pull-4", exerciseId: "ex-db-curl", notes: "", sets: [
+        { id: "s25", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s26", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s27", weight: null, reps: 12, tag: null, rpe: null },
+      ]},
+      { id: "et-pull-5", exerciseId: "ex-hammer-curl", notes: "", sets: [
+        { id: "s28", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s29", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s30", weight: null, reps: 12, tag: null, rpe: null },
+      ]},
+    ],
+  },
+  {
+    id: "example-legs-a",
+    name: "Beine A",
+    folderId: null,
+    notes: "Quads, Hamstrings & Waden",
+    lastUsed: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    exercises: [
+      { id: "et-leg-1", exerciseId: "ex-squat", notes: "", sets: [
+        { id: "s31", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s32", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s33", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-leg-2", exerciseId: "ex-leg-press", notes: "", sets: [
+        { id: "s34", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s35", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s36", weight: null, reps: 10, tag: null, rpe: null },
+      ]},
+      { id: "et-leg-3", exerciseId: "ex-leg-extension", notes: "", sets: [
+        { id: "s37", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s38", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s39", weight: null, reps: 12, tag: null, rpe: null },
+      ]},
+      { id: "et-leg-4", exerciseId: "ex-leg-curl", notes: "", sets: [
+        { id: "s40", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s41", weight: null, reps: 12, tag: null, rpe: null },
+        { id: "s42", weight: null, reps: 12, tag: null, rpe: null },
+      ]},
+      { id: "et-leg-5", exerciseId: "ex-standing-calf-raise", notes: "", sets: [
+        { id: "s43", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s44", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s45", weight: null, reps: 15, tag: null, rpe: null },
+      ]},
+    ],
+  },
+  {
+    id: "example-upper-body",
+    name: "Oberkörper",
+    folderId: null,
+    notes: "Brust, Rücken & Schultern",
+    lastUsed: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    exercises: [
+      { id: "et-ub-1", exerciseId: "ex-bench-press", notes: "", sets: [
+        { id: "s46", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s47", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s48", weight: null, reps: 8, tag: null, rpe: null },
+      ]},
+      { id: "et-ub-2", exerciseId: "ex-pull-up", notes: "", sets: [
+        { id: "s49", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s50", weight: null, reps: 8, tag: null, rpe: null },
+        { id: "s51", weight: null, reps: 8, tag: null, rpe: null },
+      ]},
+      { id: "et-ub-3", exerciseId: "ex-db-ohp", notes: "", sets: [
+        { id: "s52", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s53", weight: null, reps: 10, tag: null, rpe: null },
+        { id: "s54", weight: null, reps: 10, tag: null, rpe: null },
+      ]},
+      { id: "et-ub-4", exerciseId: "ex-lateral-raise", notes: "", sets: [
+        { id: "s55", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s56", weight: null, reps: 15, tag: null, rpe: null },
+        { id: "s57", weight: null, reps: 15, tag: null, rpe: null },
+      ]},
+    ],
+  },
+  {
+    id: "example-fullbody",
+    name: "Ganzkörper",
+    folderId: null,
+    notes: "Compound-Übungen Ganzkörper",
+    lastUsed: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    exercises: [
+      { id: "et-fb-1", exerciseId: "ex-squat", notes: "", sets: [
+        { id: "s58", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s59", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s60", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-fb-2", exerciseId: "ex-bench-press", notes: "", sets: [
+        { id: "s61", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s62", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s63", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-fb-3", exerciseId: "ex-pull-up", notes: "", sets: [
+        { id: "s64", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s65", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s66", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-fb-4", exerciseId: "ex-deadlift", notes: "", sets: [
+        { id: "s67", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s68", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s69", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+      { id: "et-fb-5", exerciseId: "ex-ohp", notes: "", sets: [
+        { id: "s70", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s71", weight: null, reps: 5, tag: null, rpe: null },
+        { id: "s72", weight: null, reps: 5, tag: null, rpe: null },
+      ]},
+    ],
+  },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatLastUsed(date: string | null): string | null {
+  if (!date) return null;
+  const d = new Date(date);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Heute";
+  if (diffDays === 1) return "Gestern";
+  if (diffDays < 30) return `vor ${diffDays} Tagen`;
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// ── Template Card ─────────────────────────────────────────────────────────────
+
+function TemplateCard({
+  template,
+  exercisePreview,
+  timeLabel,
+  onStart,
+  onDelete,
+  isExample,
+}: {
+  template: Template;
+  exercisePreview: string;
+  timeLabel: string | null;
+  onStart: () => void;
+  onDelete?: () => void;
+  isExample?: boolean;
+}) {
+  return (
+    <div
+      className="relative flex flex-col rounded-2xl border border-border bg-card p-3 cursor-pointer hover:border-primary/40 active:scale-[0.98] transition-all select-none"
+      onClick={onStart}
+    >
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <h3 className="font-bold text-sm leading-tight flex-1 min-w-0 break-words">
+          {template.name}
+        </h3>
+        {!isExample && onDelete && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 -mr-1 -mt-0.5 rounded-lg bg-muted/70 hover:bg-muted"
+                onClick={e => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onStart}>Starten</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/templates/${template.id}`}>Bearbeiten</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                Löschen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground line-clamp-3 mb-2 flex-1">
+        {exercisePreview || "Keine Übungen"}
+      </p>
+
+      {timeLabel && (
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+          <Clock className="h-2.5 w-2.5 shrink-0" />
+          <span>{timeLabel}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Workout Start Screen ──────────────────────────────────────────────────────
+
+function WorkoutStartScreen() {
+  const { startEmptyWorkout, startFromTemplate } = useActiveWorkout();
+  const { templates, deleteTemplate, markUsed } = useTemplates();
+  const { getById: getExercise } = useExercises();
+
+  const getExercisePreview = (tmpl: Template) =>
+    tmpl.exercises
+      .map(te => getExercise(te.exerciseId)?.name ?? "")
+      .filter(Boolean)
+      .join(", ");
+
+  const handleStartTemplate = (tmpl: Template, isUserTemplate: boolean) => {
+    startFromTemplate(tmpl);
+    if (isUserTemplate) markUsed(tmpl.id);
+  };
+
+  return (
+    <div className="flex flex-col px-4 pt-5 pb-28 gap-7">
+      <h1 className="text-3xl font-bold tracking-tight">Workout beginnen</h1>
+
+      {/* Quick Start */}
+      <section className="flex flex-col gap-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Schnellstart
+        </p>
+        <Button
+          className="w-full h-13 text-base font-semibold rounded-xl shadow-md"
+          onClick={startEmptyWorkout}
+        >
+          Ein leeres Workout beginnen
+        </Button>
+      </section>
+
+      {/* User Templates */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Vorlagen</h2>
+          <Link href="/templates">
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-sm">
+              <Plus className="h-3.5 w-3.5" />
+              Vorlage
+            </Button>
+          </Link>
+        </div>
+
+        {templates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Noch keine Vorlagen. Erstelle eine oder starte mit einem Beispiel.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-foreground/80">
+              Meine Vorlagen ({templates.length})
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {templates.map(tmpl => (
+                <TemplateCard
+                  key={tmpl.id}
+                  template={tmpl}
+                  exercisePreview={getExercisePreview(tmpl)}
+                  timeLabel={formatLastUsed(tmpl.lastUsed ?? tmpl.updatedAt)}
+                  onStart={() => handleStartTemplate(tmpl, true)}
+                  onDelete={() => deleteTemplate(tmpl.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Example Templates */}
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-semibold text-foreground/80">
+          Beispiel Vorlagen ({EXAMPLE_TEMPLATES.length})
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {EXAMPLE_TEMPLATES.map(tmpl => (
+            <TemplateCard
+              key={tmpl.id}
+              template={tmpl}
+              exercisePreview={getExercisePreview(tmpl)}
+              timeLabel={null}
+              onStart={() => handleStartTemplate(tmpl, false)}
+              isExample
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ── Main Workout Page ─────────────────────────────────────────────────────────
+
 export default function WorkoutPage() {
   const router = useRouter();
   const {
@@ -52,7 +408,7 @@ export default function WorkoutPage() {
   } = useActiveWorkout();
   const { startTimer, timeRemaining, totalDuration, isRunning, activeExerciseId, activeSetId, skipTimer, addTime, setVisible } = useTimer();
   const { workouts, save, getLastForExercise } = useWorkouts();
-  const { saveWorkoutAsTemplate } = useTemplates();
+  const { templates, saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
 
@@ -63,23 +419,16 @@ export default function WorkoutPage() {
   const [templateName, setTemplateName] = useState("");
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   if (!activeWorkout) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-6 px-6 pt-24">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Plus className="h-12 w-12 text-muted-foreground/50" />
-          <h2 className="text-xl font-bold">Kein aktives Workout</h2>
-          <p className="text-sm text-muted-foreground">
-            Starte ein leeres Workout oder wähle eine Vorlage auf der Startseite.
-          </p>
-        </div>
-        <Button className="w-full max-w-xs h-12 text-base font-semibold" onClick={startEmptyWorkout}>
-          Leeres Workout starten
-        </Button>
-      </div>
-    );
+    return <WorkoutStartScreen />;
   }
+
+  const isUserTemplate = !!(
+    activeWorkout.templateId &&
+    templates.some(t => t.id === activeWorkout.templateId)
+  );
 
   const handleFinish = () => {
     const finished = finishWorkout();
@@ -136,6 +485,8 @@ export default function WorkoutPage() {
   const handleDiscard = () => {
     discardWorkout();
     setDiscardDialogOpen(false);
+    setFinishDialogOpen(false);
+    setShowDiscardConfirm(false);
     router.push("/");
   };
 
@@ -550,15 +901,6 @@ export default function WorkoutPage() {
         <Plus className="mr-2 h-5 w-5" /> Übung hinzufügen
       </Button>
 
-      {/* Discard Button */}
-      <Button
-        variant="ghost"
-        className="text-destructive"
-        onClick={() => setDiscardDialogOpen(true)}
-      >
-        Workout verwerfen
-      </Button>
-
       {/* Exercise Picker */}
       <ExercisePicker
         open={pickerOpen}
@@ -567,36 +909,71 @@ export default function WorkoutPage() {
       />
 
       {/* Finish Dialog */}
-      <Dialog open={finishDialogOpen} onOpenChange={setFinishDialogOpen}>
+      <Dialog
+        open={finishDialogOpen}
+        onOpenChange={(open) => {
+          setFinishDialogOpen(open);
+          if (!open) setShowDiscardConfirm(false);
+        }}
+      >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Workout beenden?</DialogTitle>
-            <DialogDescription>
-              Dein Workout wird gespeichert.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={saveAsTemplate}
-                onCheckedChange={(v) => setSaveAsTemplate(!!v)}
-              />
-              Als Vorlage speichern
-            </label>
-            {saveAsTemplate && (
-              <Input
-                placeholder="Vorlagenname..."
-                value={templateName}
-                onChange={e => setTemplateName(e.target.value)}
-              />
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFinishDialogOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleFinish}>Speichern</Button>
-          </DialogFooter>
+          {showDiscardConfirm ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Bist du sicher?</DialogTitle>
+                <DialogDescription>
+                  Dein Workout wird nicht gespeichert und geht verloren.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDiscardConfirm(false)}>
+                  Zurück
+                </Button>
+                <Button variant="destructive" onClick={handleDiscard}>
+                  Verwerfen
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Workout beenden?</DialogTitle>
+                {!isUserTemplate && (
+                  <DialogDescription>Dein Workout wird gespeichert.</DialogDescription>
+                )}
+              </DialogHeader>
+              {!isUserTemplate && (
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={saveAsTemplate}
+                      onCheckedChange={(v) => setSaveAsTemplate(!!v)}
+                    />
+                    Als Vorlage speichern
+                  </label>
+                  {saveAsTemplate && (
+                    <Input
+                      placeholder="Vorlagenname..."
+                      value={templateName}
+                      onChange={e => setTemplateName(e.target.value)}
+                    />
+                  )}
+                </div>
+              )}
+              <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setFinishDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDiscardConfirm(true)}
+                >
+                  Beenden ohne Speichern
+                </Button>
+                <Button onClick={handleFinish}>Speichern</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
