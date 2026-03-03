@@ -102,6 +102,27 @@ export default function FriendsPage() {
     init();
   }, [loadFriendships]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("friendships-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "friendships", filter: `receiver_id=eq.${currentUser.id}` },
+        () => loadFriendships(currentUser.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "friendships", filter: `sender_id=eq.${currentUser.id}` },
+        () => loadFriendships(currentUser.id)
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser, loadFriendships]);
+
   async function handleSearch() {
     if (!searchQuery.trim() || !currentUser) return;
     setSearching(true);
