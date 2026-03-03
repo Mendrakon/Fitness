@@ -143,7 +143,6 @@ body {
   -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @supports (-webkit-touch-callout: none) {
