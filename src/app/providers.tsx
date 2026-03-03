@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <RestTimerOverlay />
           <BottomNav />
           <NotificationPrompt />
-          <Toaster position="top-center" offset="calc(env(safe-area-inset-top) + 14px)" />
+          <Toaster position="top-center" style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }} />
         </ThemeProvider>
       </TimerProvider>
     </ActiveWorkoutProvider>
