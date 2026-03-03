@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Dumbbell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -34,31 +35,7 @@ export default function RegisterPage() {
       return;
     }
 
-    setDone(true);
-  }
-
-  if (done) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Dumbbell className="size-6" />
-            </div>
-          </div>
-          <h2 className="text-xl font-bold">Bestätige deine E-Mail</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Wir haben dir eine Bestätigungsmail an <strong>{email}</strong> geschickt. Klick auf den
-            Link darin, um dein Konto zu aktivieren.
-          </p>
-          <Link href="/login">
-            <Button variant="outline" className="mt-6 w-full">
-              Zurück zum Login
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
+    router.push("/");
   }
 
   return (

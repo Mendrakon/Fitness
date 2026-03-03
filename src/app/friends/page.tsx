@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
@@ -41,8 +42,9 @@ export default function FriendsPage() {
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [searching, setSearching] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const loadFriendships = useCallback(async (userId: string) => {
+  const loadFriendships = useCallback(async (userId: string): Promise<void> => {
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -91,8 +93,9 @@ export default function FriendsPage() {
 
       if (profile) {
         setCurrentUser(profile as Profile);
-        loadFriendships(user.id);
+        await loadFriendships(user.id);
       }
+      setLoading(false);
     }
     init();
   }, [loadFriendships]);
@@ -178,7 +181,17 @@ export default function FriendsPage() {
       <div className="mx-auto w-full max-w-lg flex-1 px-4 py-4 space-y-4">
 
         {/* Eigenes Profil */}
-        {currentUser && (
+        {loading ? (
+          <Card>
+            <CardContent className="flex items-center gap-3 py-3">
+              <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : currentUser ? (
           <Card>
             <CardContent className="flex items-center gap-3 py-3">
               <UserAvatar username={currentUser.username} />
@@ -188,7 +201,7 @@ export default function FriendsPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
         {/* Suche */}
         <div className="flex gap-2">
@@ -256,7 +269,19 @@ export default function FriendsPage() {
           </TabsList>
 
           <TabsContent value="friends" className="mt-3 space-y-2">
-            {friends.length === 0 ? (
+            {loading ? (
+              <>
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="flex items-center gap-3 py-3">
+                      <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                      <Skeleton className="h-3.5 flex-1" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            ) : friends.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                   <Users className="h-6 w-6 text-muted-foreground" />
@@ -289,7 +314,20 @@ export default function FriendsPage() {
           </TabsContent>
 
           <TabsContent value="requests" className="mt-3 space-y-2">
-            {incomingRequests.length === 0 ? (
+            {loading ? (
+              <>
+                {[1, 2].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="flex items-center gap-3 py-3">
+                      <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                      <Skeleton className="h-3.5 flex-1" />
+                      <Skeleton className="h-8 w-20 rounded-md" />
+                      <Skeleton className="h-8 w-16 rounded-md" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            ) : incomingRequests.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                   <UserPlus className="h-6 w-6 text-muted-foreground" />

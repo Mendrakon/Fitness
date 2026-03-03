@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Download, Upload, Trash2, Dumbbell, Scale, Clock, Sun, Moon, Monitor, LogOut, User, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,52 @@ export default function SettingsPage() {
   const { templates } = useTemplates();
   const { measurements } = useMeasurements();
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setEmail(user.email ?? "");
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+      if (data) setUsername(data.username);
+    };
+    loadProfile();
+  }, []);
+
+  const handleSaveUsername = async () => {
+    const trimmed = newUsername.trim();
+    if (!trimmed || trimmed === username) {
+      setEditingUsername(false);
+      return;
+    }
+    setSavingUsername(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username: trimmed })
+      .eq("id", user.id);
+    setSavingUsername(false);
+    if (error) {
+      toast.error(error.message.includes("unique") ? "Nutzername bereits vergeben" : "Fehler beim Speichern");
+    } else {
+      setUsername(trimmed);
+      setEditingUsername(false);
+      toast.success("Nutzername gespeichert");
+    }
+  };
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -126,27 +172,52 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Units */}
+        {/* Profile */}
         <Card>
           <CardHeader className="py-2.5 px-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Einheiten</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase">Profil</p>
           </CardHeader>
           <CardContent className="py-2 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Gewichtseinheit</Label>
-              <Select
-                value={settings.weightUnit}
-                onValueChange={v => update({ weightUnit: v as WeightUnit })}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="kg">kg</SelectItem>
-                  <SelectItem value="lbs">lbs</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                {editingUsername ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      value={newUsername}
+                      onChange={e => setNewUsername(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") handleSaveUsername(); if (e.key === "Escape") setEditingUsername(false); }}
+                      className="h-7 text-sm px-2"
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleSaveUsername} disabled={savingUsername}>
+                      <Check className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setEditingUsername(false)}>
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium truncate">{username || "—"}</p>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => { setNewUsername(username); setEditingUsername(true); }}>
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              </div>
             </div>
+            <Separator />
+            <Button
+              variant="outline"
+              className="w-full justify-start text-destructive border-destructive/30"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Abmelden
+            </Button>
           </CardContent>
         </Card>
 
@@ -252,19 +323,6 @@ export default function SettingsPage() {
               onClick={() => setClearDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" /> Alle Daten löschen
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Logout */}
-        <Card>
-          <CardContent className="py-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start text-destructive border-destructive/30"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-2 h-4 w-4" /> Abmelden
             </Button>
           </CardContent>
         </Card>
