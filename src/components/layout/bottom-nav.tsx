@@ -27,7 +27,7 @@ export function BottomNav() {
 
   return (
     <nav className="bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-end justify-around px-1 pt-1 pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-lg items-end justify-around px-1 pt-1 pb-[var(--safe-area-bottom)]">
         {tabs.map(tab => {
           const isActive = tab.href === "/"
             ? pathname === "/"
