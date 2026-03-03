@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 interface Profile {
   id: string;
@@ -46,6 +47,7 @@ function UserAvatar({ username, avatarUrl, size = "md" }: { username: string; av
 }
 
 export default function FriendsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [friends, setFriends] = useState<Profile[]>([]);
@@ -177,6 +179,13 @@ export default function FriendsPage() {
 
     setSentIds(prev => new Set(prev).add(receiverId));
     toast.success("Freundschaftsanfrage gesendet!");
+
+    // Push-Notification an Empfänger schicken (funktioniert auch wenn App geschlossen ist)
+    fetch("/api/push/friend-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiverId }),
+    }).catch(() => {});
   }
 
   async function respondToRequest(friendshipId: string, accept: boolean) {
@@ -243,12 +252,15 @@ export default function FriendsPage() {
             </CardContent>
           </Card>
         ) : currentUser ? (
-          <Card>
+          <Card
+            className="cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => router.push(`/profile/${currentUser.id}`)}
+          >
             <CardContent className="flex items-center gap-3 py-3">
               <UserAvatar username={currentUser.username} avatarUrl={currentUser.avatar_url} />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">@{currentUser.username}</p>
-                <p className="text-xs text-muted-foreground">Dein Profil</p>
+                <p className="text-xs text-muted-foreground">Dein Profil ansehen</p>
               </div>
             </CardContent>
           </Card>
@@ -279,14 +291,19 @@ export default function FriendsPage() {
               return (
                 <Card key={user.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={user.username} avatarUrl={user.avatar_url} size="sm" />
-                    <span className="flex-1 text-sm font-medium">@{user.username}</span>
+                    <button
+                      className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                      onClick={() => router.push(`/profile/${user.id}`)}
+                    >
+                      <UserAvatar username={user.username} avatarUrl={user.avatar_url} size="sm" />
+                      <span className="flex-1 text-sm font-medium truncate">@{user.username}</span>
+                    </button>
                     {isFriend ? (
-                      <span className="text-xs text-muted-foreground">Bereits befreundet</span>
+                      <span className="text-xs text-muted-foreground shrink-0">Bereits befreundet</span>
                     ) : requested ? (
-                      <span className="text-xs text-muted-foreground">Anfrage gesendet</span>
+                      <span className="text-xs text-muted-foreground shrink-0">Anfrage gesendet</span>
                     ) : (
-                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => sendRequest(user.id)}>
+                      <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => sendRequest(user.id)}>
                         <UserPlus className="h-3.5 w-3.5" />
                         Hinzufügen
                       </Button>
@@ -348,12 +365,17 @@ export default function FriendsPage() {
               friends.map((friend) => (
                 <Card key={friend.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={friend.username} avatarUrl={friend.avatar_url} size="sm" />
-                    <span className="flex-1 text-sm font-medium">@{friend.username}</span>
+                    <button
+                      className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                      onClick={() => router.push(`/profile/${friend.id}`)}
+                    >
+                      <UserAvatar username={friend.username} avatarUrl={friend.avatar_url} size="sm" />
+                      <span className="flex-1 text-sm font-medium truncate">@{friend.username}</span>
+                    </button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => removeFriend(friend.id)}
                     >
                       <UserX className="h-4 w-4" />
@@ -394,9 +416,14 @@ export default function FriendsPage() {
               incomingRequests.map((req) => (
                 <Card key={req.id}>
                   <CardContent className="flex items-center gap-3 py-3">
-                    <UserAvatar username={req.sender.username} avatarUrl={req.sender.avatar_url} size="sm" />
-                    <span className="flex-1 text-sm font-medium">@{req.sender.username}</span>
-                    <div className="flex gap-1.5">
+                    <button
+                      className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                      onClick={() => router.push(`/profile/${req.sender.id}`)}
+                    >
+                      <UserAvatar username={req.sender.username} avatarUrl={req.sender.avatar_url} size="sm" />
+                      <span className="flex-1 text-sm font-medium truncate">@{req.sender.username}</span>
+                    </button>
+                    <div className="flex gap-1.5 shrink-0">
                       <Button size="sm" className="gap-1.5 h-8" onClick={() => respondToRequest(req.id, true)}>
                         <UserCheck className="h-3.5 w-3.5" />
                         Annehmen

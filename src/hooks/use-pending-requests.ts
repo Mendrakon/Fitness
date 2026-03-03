@@ -37,13 +37,15 @@ export function usePendingRequests() {
           (payload) => {
             if (payload.new.status === "pending") {
               setCount((c) => c + 1);
-              // In-App Notification wenn Permission schon erteilt
-              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-                new Notification("Neue Freundschaftsanfrage! 👋", {
-                  body: "Jemand möchte mit dir befreundet sein.",
-                  icon: "/icon-192.png",
-                  tag: "friend-request",
-                });
+              // Service-Worker-Notification: zuverlässiger als new Notification() auf Mobilgeräten
+              if (typeof Notification !== "undefined" && Notification.permission === "granted" && "serviceWorker" in navigator) {
+                navigator.serviceWorker.ready.then((reg) => {
+                  reg.showNotification("Neue Freundschaftsanfrage! 👋", {
+                    body: "Jemand möchte mit dir befreundet sein.",
+                    icon: "/icon-192.png",
+                    tag: "friend-request",
+                  });
+                }).catch(() => {});
               }
             }
           }
