@@ -63,23 +63,58 @@ export default function SettingsPage() {
     loadProfile();
   }, []);
 
+  // Compresses an image file to a max dimension and JPEG quality before upload.
+  // Typical result: a 4 MB phone photo becomes ~60–120 KB.
+  const compressImage = (file: File, maxDimension = 512, quality = 0.82): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const { width, height } = img;
+        const scale = Math.min(1, maxDimension / Math.max(width, height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas not available"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Bild darf maximal 5 MB groß sein");
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Bild darf maximal 20 MB groß sein");
       return;
     }
 
     setUploadingAvatar(true);
     const supabase = createClient();
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${userId}/avatar.${ext}`;
+
+    let blob: Blob;
+    try {
+      blob = await compressImage(file);
+    } catch {
+      toast.error("Bild konnte nicht verarbeitet werden");
+      setUploadingAvatar(false);
+      return;
+    }
+
+    const path = `${userId}/avatar.jpg`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
 
     if (uploadError) {
       toast.error("Upload fehlgeschlagen");
@@ -91,7 +126,7 @@ export default function SettingsPage() {
       .from("avatars")
       .getPublicUrl(path);
 
-    // Add cache-buster so browser reloads the new image
+    // Cache-buster so browser reloads the new image
     const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
 
     await supabase
@@ -103,7 +138,6 @@ export default function SettingsPage() {
     setUploadingAvatar(false);
     toast.success("Profilbild gespeichert");
 
-    // Reset input so the same file can be selected again
     e.target.value = "";
   };
 
