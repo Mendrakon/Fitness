@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, UserPlus, UserCheck, UserX, Users } from "lucide-react";
+import { Search, UserPlus, UserCheck, UserX, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -235,10 +235,10 @@ export default function FriendsPage() {
   const pendingCount = incomingRequests.length;
 
   return (
-    <div className="flex flex-col min-h-dvh pb-[calc(env(safe-area-inset-bottom)+4rem)]">
+    <div className="flex flex-col">
       <PageHeader title="Freunde" />
 
-      <div className="mx-auto w-full max-w-lg flex-1 px-4 py-4 space-y-4">
+      <div className="mx-auto w-full max-w-lg px-4 py-4 space-y-4">
 
         {/* Eigenes Profil */}
         {loading ? (
@@ -428,8 +428,14 @@ export default function FriendsPage() {
                         <UserCheck className="h-3.5 w-3.5" />
                         Annehmen
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" onClick={() => respondToRequest(req.id, false)}>
-                        Ablehnen
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => respondToRequest(req.id, false)}
+                        title="Ablehnen"
+                      >
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>

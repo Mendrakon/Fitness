@@ -183,10 +183,10 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     : null;
 
   return (
-    <div className="flex flex-col min-h-dvh pb-[calc(env(safe-area-inset-bottom)+4rem)]">
+    <div className="flex flex-col">
       <PageHeader title="Profil" showBack />
 
-      <div className="mx-auto w-full max-w-lg flex-1 px-4 py-6 space-y-4">
+      <div className="mx-auto w-full max-w-lg px-4 py-6 space-y-4">
         {loading ? (
           <>
             <div className="flex flex-col items-center gap-4 py-6">

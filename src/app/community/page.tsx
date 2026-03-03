@@ -3,9 +3,9 @@ import { PageHeader } from "@/components/layout/page-header";
 
 export default function CommunityPage() {
   return (
-    <div className="flex flex-col min-h-dvh pb-[calc(env(safe-area-inset-bottom)+4rem)]">
+    <div className="flex flex-col">
       <PageHeader title="Community" />
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="flex flex-col items-center justify-center gap-4 px-6 py-24 text-center">
         <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-muted">
           <Globe className="h-8 w-8 text-muted-foreground" />
           <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border">

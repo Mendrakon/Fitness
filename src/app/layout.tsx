@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
-          <div className="mx-auto min-h-dvh max-w-lg pb-20 pt-[env(safe-area-inset-top)]">{children}</div>
+          <div className="mx-auto max-w-lg pb-[calc(env(safe-area-inset-bottom)+4rem)] pt-[env(safe-area-inset-top)]">{children}</div>
         </Providers>
       </body>
     </html>
