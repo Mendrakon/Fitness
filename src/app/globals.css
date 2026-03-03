@@ -137,6 +137,21 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Keep bottom nav pinned on iOS Safari where fixed + blur can jump while scrolling. */
+.bottom-nav {
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .bottom-nav {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 /* Fixed background behind iOS Dynamic Island / notch / status bar.
    Prevents scrolling content from showing through the translucent status bar. */
 body::before {
