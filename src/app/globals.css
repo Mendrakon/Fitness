@@ -154,12 +154,14 @@ body {
   }
 }
 
-/* Content container: account for bottom nav + safe area.
-   min-height ensures iOS Safari always sees a "tall" page so its toolbar
-   collapses and the fixed bottom-nav truly sits at the screen edge. */
+/* Content container: fixed height + internal scroll prevents iOS Safari
+   from collapsing/expanding its toolbar, which would shift the viewport
+   and cause the fixed bottom-nav to "jump" between tabs. */
 .main-content {
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
+  height: 100dvh;
+  height: -webkit-fill-available;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: calc(5rem + var(--safe-area-bottom));
 }
 
@@ -175,9 +177,12 @@ body::before {
   z-index: 50;
 }
 
-/* Prevent pull-to-refresh on mobile */
+/* Prevent pull-to-refresh and body-level scroll on mobile.
+   All scrolling happens inside .main-content so iOS Safari toolbar stays fixed. */
 html, body {
   overscroll-behavior-y: contain;
+  overflow: hidden;
+  height: 100%;
 }
 
 /* Hide scrollbars but keep scrolling */
