@@ -137,6 +137,19 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Fixed background behind iOS Dynamic Island / notch / status bar.
+   Prevents scrolling content from showing through the translucent status bar. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--background);
+  z-index: 50;
+}
+
 /* Prevent pull-to-refresh on mobile */
 html, body {
   overscroll-behavior-y: contain;
