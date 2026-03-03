@@ -1,15 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserPlus, UserCheck, UserX, Users, Calendar, Pencil, Check, X } from "lucide-react";
+import { UserPlus, UserCheck, UserX, Users, Calendar, Pencil, Check, X, Dumbbell, Ruler, Weight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { use } from "react";
+
+const MUSCLE_GROUPS = [
+  "Brust", "Rücken", "Schultern", "Bizeps", "Trizeps",
+  "Bauch", "Beine", "Gesäß", "Waden", "Unterarme",
+];
 
 interface Profile {
   id: string;
@@ -17,6 +23,9 @@ interface Profile {
   avatar_url?: string | null;
   created_at: string;
   bio?: string | null;
+  weight?: number | null;
+  height?: number | null;
+  favorite_muscle_group?: string | null;
 }
 
 type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "friends";
@@ -44,6 +53,13 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
   const [draftBio, setDraftBio] = useState("");
   const [savingBio, setSavingBio] = useState(false);
 
+  // Stats editing state
+  const [editingStats, setEditingStats] = useState(false);
+  const [draftWeight, setDraftWeight] = useState("");
+  const [draftHeight, setDraftHeight] = useState("");
+  const [draftMuscle, setDraftMuscle] = useState("");
+  const [savingStats, setSavingStats] = useState(false);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -52,7 +68,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
         supabase.auth.getUser(),
         supabase
           .from("profiles")
-          .select("id, username, avatar_url, created_at, bio")
+          .select("id, username, avatar_url, created_at, bio, weight, height, favorite_muscle_group")
           .eq("id", profileId)
           .single(),
       ]);
@@ -111,6 +127,43 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
       toast.success("Bio gespeichert.");
     }
     setSavingBio(false);
+  }
+
+  function openStatsEdit() {
+    setDraftWeight(profile?.weight != null ? String(profile.weight) : "");
+    setDraftHeight(profile?.height != null ? String(profile.height) : "");
+    setDraftMuscle(profile?.favorite_muscle_group ?? "");
+    setEditingStats(true);
+  }
+
+  async function saveStats() {
+    if (!currentUserId) return;
+    setSavingStats(true);
+    const supabase = createClient();
+    const parsedWeight = draftWeight ? parseFloat(draftWeight) : null;
+    const parsedHeight = draftHeight ? parseInt(draftHeight, 10) : null;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        weight: parsedWeight && !isNaN(parsedWeight) ? parsedWeight : null,
+        height: parsedHeight && !isNaN(parsedHeight) ? parsedHeight : null,
+        favorite_muscle_group: draftMuscle || null,
+      })
+      .eq("id", currentUserId);
+
+    if (error) {
+      toast.error("Stats konnten nicht gespeichert werden.");
+    } else {
+      setProfile(prev => prev ? {
+        ...prev,
+        weight: parsedWeight && !isNaN(parsedWeight) ? parsedWeight : null,
+        height: parsedHeight && !isNaN(parsedHeight) ? parsedHeight : null,
+        favorite_muscle_group: draftMuscle || null,
+      } : null);
+      setEditingStats(false);
+      toast.success("Stats gespeichert.");
+    }
+    setSavingStats(false);
   }
 
   async function sendRequest() {
@@ -290,6 +343,125 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                   ) : (
                     <p className="text-sm text-muted-foreground italic">Keine Bio vorhanden.</p>
                   )
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Stats */}
+            <Card>
+              <CardContent className="py-3">
+                {isOwnProfile && editingStats ? (
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stats bearbeiten</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Gewicht (kg)</label>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="z.B. 80"
+                          value={draftWeight}
+                          onChange={e => setDraftWeight(e.target.value)}
+                          className="h-8 text-sm"
+                          min={20}
+                          max={300}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Größe (cm)</label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="z.B. 180"
+                          value={draftHeight}
+                          onChange={e => setDraftHeight(e.target.value)}
+                          className="h-8 text-sm"
+                          min={100}
+                          max={250}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Lieblingsmuskelgruppe</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MUSCLE_GROUPS.map(mg => (
+                          <button
+                            key={mg}
+                            type="button"
+                            onClick={() => setDraftMuscle(prev => prev === mg ? "" : mg)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                              draftMuscle === mg
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "border-border text-muted-foreground hover:border-primary/60"
+                            }`}
+                          >
+                            {mg}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 pt-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1.5"
+                        onClick={() => setEditingStats(false)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Abbrechen
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1.5"
+                        onClick={saveStats}
+                        disabled={savingStats}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Speichern
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={isOwnProfile ? "group cursor-pointer" : ""}
+                    onClick={isOwnProfile ? openStatsEdit : undefined}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stats</p>
+                      {isOwnProfile && (
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                    {!profile.weight && !profile.height && !profile.favorite_muscle_group && isOwnProfile ? (
+                      <p className="text-sm text-muted-foreground italic">Noch keine Stats – tippe hier, um sie hinzuzufügen.</p>
+                    ) : !profile.weight && !profile.height && !profile.favorite_muscle_group ? (
+                      <p className="text-sm text-muted-foreground italic">Keine Stats vorhanden.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <Weight className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold">
+                            {profile.weight != null ? `${profile.weight} kg` : "—"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Gewicht</p>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <Ruler className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold">
+                            {profile.height != null ? `${profile.height} cm` : "—"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Größe</p>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <Dumbbell className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold leading-tight">
+                            {profile.favorite_muscle_group ?? "—"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Liebling</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
