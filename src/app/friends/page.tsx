@@ -121,7 +121,7 @@ export default function FriendsPage() {
       .subscribe();
 
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") loadFriendships(currentUser.id);
+      if (document.visibilityState === "visible") loadFriendships(currentUser!.id);
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
 
