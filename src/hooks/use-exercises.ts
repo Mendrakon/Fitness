@@ -120,7 +120,10 @@ export function useExercises() {
   );
 
   const createCustom = useCallback(
-    async (exercise: Omit<Exercise, "id" | "isCustom">) => {
+    async (
+      exercise: Omit<Exercise, "id" | "isCustom">,
+      options?: { throwOnError?: boolean }
+    ) => {
       const newExercise: Exercise = { ...exercise, id: uuid(), isCustom: true };
 
       // Optimistic local update
@@ -130,7 +133,15 @@ export function useExercises() {
       const client = createClient();
       const { data: { user } } = await client.auth.getUser();
       if (user) {
-        await client.from("custom_exercises").insert(toRow(newExercise, user.id));
+        const { error } = await client.from("custom_exercises").insert(toRow(newExercise, user.id));
+        if (error) {
+          // Roll back optimistic insert if DB write failed
+          setCustomExercises((prev) => prev.filter((e) => e.id !== newExercise.id));
+          if (options?.throwOnError) throw error;
+        }
+      } else if (options?.throwOnError) {
+        setCustomExercises((prev) => prev.filter((e) => e.id !== newExercise.id));
+        throw new Error("Not authenticated");
       }
 
       return newExercise;

@@ -334,7 +334,7 @@ function WorkoutStartScreen() {
   };
 
   const handleShare = async (tmpl: Template) => {
-    await shareTemplateToFeed(tmpl, (id) => getExercise(id)?.name ?? "Unbekannte Übung");
+    await shareTemplateToFeed(tmpl, (id) => getExercise(id));
     toast.success("Vorlage geteilt", { description: "Im Community-Feed sichtbar." });
   };
 
@@ -1137,3 +1137,4 @@ export default function WorkoutPage() {
     </div>
   );
 }
+

@@ -47,10 +47,7 @@ export default function TemplatesPage() {
   };
 
   const handleShare = async (template: typeof templates[0]) => {
-    await shareTemplateToFeed(
-      template,
-      (id) => getExercise(id)?.name ?? "Unbekannte Übung"
-    );
+    await shareTemplateToFeed(template, (id) => getExercise(id));
     toast.success("Vorlage geteilt", { description: "Im Community-Feed sichtbar." });
   };
 
@@ -197,3 +194,4 @@ export default function TemplatesPage() {
     </div>
   );
 }
+

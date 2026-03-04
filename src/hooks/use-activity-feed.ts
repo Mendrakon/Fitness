@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
-import type { Template, SetTag } from "@/lib/types";
+import type {
+  Template,
+  SetTag,
+  Exercise,
+  ExerciseCategory,
+  MuscleGroup,
+} from "@/lib/types";
 
 export type FeedEventType = "pr" | "workout_complete" | "template_share";
 
@@ -11,6 +17,7 @@ export type FeedEventType = "pr" | "workout_complete" | "template_share";
 export interface TemplateShareExercise {
   exerciseId: string;
   exerciseName: string;
+  customExercise: SharedCustomExercise | null;
   sets: Array<{ reps: number | null; tag: SetTag }>;
 }
 
@@ -19,10 +26,46 @@ export interface TemplateSharePayload {
   exercises: TemplateShareExercise[];
 }
 
+export interface SharedCustomExercise {
+  name: string;
+  category: ExerciseCategory;
+  muscleGroup: MuscleGroup;
+  equipment: string;
+  pinnedNote: string | null;
+  defaultRestTimerWork: number | null;
+  defaultRestTimerWarmup: number | null;
+}
+
 const TEMPLATE_SET_TAGS: Set<Exclude<SetTag, null>> = new Set([
   "warmup",
   "dropset",
   "failure",
+]);
+const EXERCISE_CATEGORIES: Set<ExerciseCategory> = new Set([
+  "barbell",
+  "dumbbell",
+  "machine",
+  "cable",
+  "bodyweight",
+  "band",
+  "kettlebell",
+  "other",
+]);
+const MUSCLE_GROUPS: Set<MuscleGroup> = new Set([
+  "chest",
+  "back",
+  "shoulders",
+  "biceps",
+  "triceps",
+  "forearms",
+  "core",
+  "quads",
+  "hamstrings",
+  "glutes",
+  "calves",
+  "full_body",
+  "cardio",
+  "other",
 ]);
 
 function normalizeSetTag(tag: unknown): SetTag {
@@ -33,12 +76,57 @@ function normalizeSetTag(tag: unknown): SetTag {
     : null;
 }
 
+function normalizeExerciseCategory(category: unknown): ExerciseCategory {
+  if (typeof category !== "string") return "other";
+  return EXERCISE_CATEGORIES.has(category as ExerciseCategory)
+    ? (category as ExerciseCategory)
+    : "other";
+}
+
+function normalizeMuscleGroup(muscleGroup: unknown): MuscleGroup {
+  if (typeof muscleGroup !== "string") return "other";
+  return MUSCLE_GROUPS.has(muscleGroup as MuscleGroup)
+    ? (muscleGroup as MuscleGroup)
+    : "other";
+}
+
+function normalizeCustomExercise(
+  customExercise: unknown,
+  fallbackName: string
+): SharedCustomExercise | null {
+  if (!customExercise || typeof customExercise !== "object") return null;
+  const raw = customExercise as {
+    name?: unknown;
+    category?: unknown;
+    muscleGroup?: unknown;
+    equipment?: unknown;
+    pinnedNote?: unknown;
+    defaultRestTimerWork?: unknown;
+    defaultRestTimerWarmup?: unknown;
+  };
+  return {
+    name:
+      typeof raw.name === "string" && raw.name.trim().length > 0
+        ? raw.name
+        : fallbackName,
+    category: normalizeExerciseCategory(raw.category),
+    muscleGroup: normalizeMuscleGroup(raw.muscleGroup),
+    equipment: typeof raw.equipment === "string" ? raw.equipment : "",
+    pinnedNote: typeof raw.pinnedNote === "string" ? raw.pinnedNote : null,
+    defaultRestTimerWork:
+      typeof raw.defaultRestTimerWork === "number" ? raw.defaultRestTimerWork : null,
+    defaultRestTimerWarmup:
+      typeof raw.defaultRestTimerWarmup === "number" ? raw.defaultRestTimerWarmup : null,
+  };
+}
+
 function normalizeTemplateSharePayload(payload: unknown): TemplateSharePayload {
   const raw = payload as {
     templateName?: unknown;
     exercises?: Array<{
       exerciseId?: unknown;
       exerciseName?: unknown;
+      customExercise?: unknown;
       sets?: Array<{ reps?: unknown; tag?: unknown }>;
     }>;
   };
@@ -49,13 +137,15 @@ function normalizeTemplateSharePayload(payload: unknown): TemplateSharePayload {
   for (const exercise of rawExercises) {
     if (typeof exercise?.exerciseId !== "string" || !exercise.exerciseId) continue;
 
+    const exerciseName =
+      typeof exercise.exerciseName === "string" && exercise.exerciseName.trim().length > 0
+        ? exercise.exerciseName
+        : "Unbekannte Uebung";
     const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
     exercises.push({
       exerciseId: exercise.exerciseId,
-      exerciseName:
-        typeof exercise.exerciseName === "string" && exercise.exerciseName.trim().length > 0
-          ? exercise.exerciseName
-          : "Unbekannte Übung",
+      exerciseName,
+      customExercise: normalizeCustomExercise(exercise.customExercise, exerciseName),
       // Keep only reps + tag from shared payload (no carried-over weights).
       sets: sets.map((set) => ({
         reps: typeof set?.reps === "number" ? set.reps : null,
@@ -76,7 +166,7 @@ function normalizeTemplateSharePayload(payload: unknown): TemplateSharePayload {
 // Standalone function – does NOT mount the full feed hook.
 export async function shareTemplateToFeed(
   template: Template,
-  getExerciseName: (id: string) => string,
+  getExerciseById: (id: string) => Exercise | undefined,
   visibility: FeedVisibility = "global"
 ): Promise<void> {
   const client = createClient();
@@ -85,11 +175,26 @@ export async function shareTemplateToFeed(
 
   const payload: TemplateSharePayload = {
     templateName: template.name,
-    exercises: template.exercises.map((te) => ({
-      exerciseId: te.exerciseId,
-      exerciseName: getExerciseName(te.exerciseId),
-      sets: te.sets.map((s) => ({ reps: s.reps, tag: s.tag })),
-    })),
+    exercises: template.exercises.map((te) => {
+      const exercise = getExerciseById(te.exerciseId);
+      const exerciseName = exercise?.name ?? "Unbekannte Uebung";
+      return {
+        exerciseId: te.exerciseId,
+        exerciseName,
+        customExercise: exercise?.isCustom
+          ? {
+              name: exercise.name,
+              category: exercise.category,
+              muscleGroup: exercise.muscleGroup,
+              equipment: exercise.equipment,
+              pinnedNote: exercise.pinnedNote ?? null,
+              defaultRestTimerWork: exercise.defaultRestTimerWork ?? null,
+              defaultRestTimerWarmup: exercise.defaultRestTimerWarmup ?? null,
+            }
+          : null,
+        sets: te.sets.map((s) => ({ reps: s.reps, tag: s.tag })),
+      };
+    }),
   };
 
   await client.from("feed_events").insert({
@@ -395,3 +500,4 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     refresh: fetchFeed,
   };
 }
+

@@ -13,6 +13,14 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   useActivityFeed,
@@ -22,11 +30,14 @@ import {
   type PRSummary,
   type FeedComment,
   type CurrentUserProfile,
+  type SharedCustomExercise,
   type TemplateSharePayload,
 } from "@/hooks/use-activity-feed";
 import { useTemplates } from "@/hooks/use-templates";
+import { useExercises } from "@/hooks/use-exercises";
 import { PR_METRIC_LABELS } from "@/lib/types";
-import type { Template } from "@/lib/types";
+import type { Exercise, Template } from "@/lib/types";
+import { toast } from "sonner";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -465,16 +476,63 @@ function EmptyFeed({ filter }: { filter: FeedFilter }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+type MissingCustomExercise = {
+  sourceExerciseId: string;
+  customExercise: SharedCustomExercise;
+};
+
+type PendingTemplateSave = {
+  eventId: string;
+  payload: TemplateSharePayload;
+  missingCustomExercises: MissingCustomExercise[];
+};
+
+function fallbackCustomExercise(name: string): SharedCustomExercise {
+  return {
+    name,
+    category: "other",
+    muscleGroup: "other",
+    equipment: "",
+    pinnedNote: null,
+    defaultRestTimerWork: null,
+    defaultRestTimerWarmup: null,
+  };
+}
+
+function findMissingCustomExercises(
+  payload: TemplateSharePayload,
+  getExercise: (exerciseId: string) => Exercise | undefined
+): MissingCustomExercise[] {
+  const missingBySourceId = new Map<string, MissingCustomExercise>();
+
+  for (const exercise of payload.exercises) {
+    if (getExercise(exercise.exerciseId)) continue;
+    if (missingBySourceId.has(exercise.exerciseId)) continue;
+
+    const name = exercise.customExercise?.name ?? exercise.exerciseName ?? "Eigene Uebung";
+    missingBySourceId.set(exercise.exerciseId, {
+      sourceExerciseId: exercise.exerciseId,
+      customExercise: exercise.customExercise ?? fallbackCustomExercise(name),
+    });
+  }
+
+  return Array.from(missingBySourceId.values());
+}
+
 export default function CommunityPage() {
   const [filter, setFilter] = useState<FeedFilter>("global");
   const { events, loading, currentUserProfile, toggleLike, fetchComments, addComment, refresh } =
     useActivityFeed(filter);
   const { templates, create: createTemplate } = useTemplates();
+  const { getById: getExercise, createCustom } = useExercises();
+  const [pendingTemplateSave, setPendingTemplateSave] = useState<PendingTemplateSave | null>(null);
+  const [importingCustomExercises, setImportingCustomExercises] = useState(false);
 
-  const handleSaveTemplate = (payload: TemplateSharePayload, eventId: string) => {
-    if (templates.some((t) => t.sourceEventId === eventId)) return;
-    const event = events.find((e) => e.id === eventId);
-    if (event?.userId === currentUserProfile?.userId) return;
+  const createTemplateFromSharedPayload = (
+    payload: TemplateSharePayload,
+    eventId: string,
+    exerciseIdMap: Map<string, string> = new Map()
+  ) => {
     createTemplate({
       name: payload.templateName,
       folderId: null,
@@ -482,7 +540,7 @@ export default function CommunityPage() {
       sourceEventId: eventId,
       exercises: payload.exercises.map((ex) => ({
         id: uuid(),
-        exerciseId: ex.exerciseId,
+        exerciseId: exerciseIdMap.get(ex.exerciseId) ?? ex.exerciseId,
         notes: "",
         sets: ex.sets.map((s) => ({
           id: uuid(),
@@ -493,6 +551,58 @@ export default function CommunityPage() {
         })),
       })),
     });
+  };
+
+  const handleSaveTemplate = (payload: TemplateSharePayload, eventId: string) => {
+    if (templates.some((t) => t.sourceEventId === eventId)) return;
+    const event = events.find((e) => e.id === eventId);
+    if (event?.userId === currentUserProfile?.userId) return;
+    const missingCustomExercises = findMissingCustomExercises(payload, getExercise);
+    if (missingCustomExercises.length > 0) {
+      setPendingTemplateSave({
+        eventId,
+        payload,
+        missingCustomExercises,
+      });
+      return;
+    }
+
+    createTemplateFromSharedPayload(payload, eventId);
+    toast.success("Vorlage gespeichert");
+  };
+
+  const handleImportCustomExercisesAndSave = async () => {
+    if (!pendingTemplateSave || importingCustomExercises) return;
+    setImportingCustomExercises(true);
+
+    try {
+      const exerciseIdMap = new Map<string, string>();
+      for (const missingExercise of pendingTemplateSave.missingCustomExercises) {
+        const ce = missingExercise.customExercise;
+        const created = await createCustom({
+          name: ce.name,
+          category: ce.category,
+          muscleGroup: ce.muscleGroup,
+          equipment: ce.equipment,
+          pinnedNote: ce.pinnedNote ?? undefined,
+          defaultRestTimerWork: ce.defaultRestTimerWork ?? undefined,
+          defaultRestTimerWarmup: ce.defaultRestTimerWarmup ?? undefined,
+        }, { throwOnError: true });
+        exerciseIdMap.set(missingExercise.sourceExerciseId, created.id);
+      }
+
+      createTemplateFromSharedPayload(
+        pendingTemplateSave.payload,
+        pendingTemplateSave.eventId,
+        exerciseIdMap
+      );
+      toast.success("Vorlage inkl. eigener Übungen gespeichert");
+      setPendingTemplateSave(null);
+    } catch {
+      toast.error("Custom Übungen konnten nicht übernommen werden.");
+    } finally {
+      setImportingCustomExercises(false);
+    }
   };
 
   return (
@@ -550,6 +660,48 @@ export default function CommunityPage() {
           ))
         )}
       </div>
+
+      <Dialog
+        open={pendingTemplateSave !== null}
+        onOpenChange={(open) => {
+          if (!open && !importingCustomExercises) setPendingTemplateSave(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eigene Übungen übernehmen?</DialogTitle>
+            <DialogDescription>
+              Diese Vorlage enthält {pendingTemplateSave?.missingCustomExercises.length ?? 0} eigene
+              Übung{(pendingTemplateSave?.missingCustomExercises.length ?? 0) === 1 ? "" : "en"}, die
+              du noch nicht hast. Sollen diese jetzt übernommen und mitgespeichert werden?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-44 space-y-1.5 overflow-y-auto rounded-lg border border-border bg-muted/20 p-2">
+            {pendingTemplateSave?.missingCustomExercises.map((missing) => (
+              <div
+                key={missing.sourceExerciseId}
+                className="rounded-md border border-border/70 bg-background px-2 py-1.5 text-xs"
+              >
+                {missing.customExercise.name}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingTemplateSave(null)}
+              disabled={importingCustomExercises}
+            >
+              Abbrechen
+            </Button>
+            <Button onClick={handleImportCustomExercisesAndSave} disabled={importingCustomExercises}>
+              {importingCustomExercises ? "Speichert..." : "Übernehmen & speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
