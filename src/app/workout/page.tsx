@@ -28,6 +28,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
 import type { SetTag, RPE, WorkoutExercise, PREvent, Template } from "@/lib/types";
 import { cn } from "@/lib/utils";
