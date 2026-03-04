@@ -25,12 +25,12 @@ import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
 import { useExercises } from "@/hooks/use-exercises";
 import { useSettings } from "@/hooks/use-settings";
+import { usePersonalRecords } from "@/hooks/use-personal-records";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
-import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
-import type { SetTag, RPE, WorkoutExercise, PREvent, Template } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise, Template } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -411,6 +411,7 @@ export default function WorkoutPage() {
   const { templates, saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
+  const { addPREvents } = usePersonalRecords();
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
@@ -438,22 +439,7 @@ export default function WorkoutPage() {
       // PR Detection — use workouts already loaded from DB
       const prs = detectPRs(finished, workouts, settings);
       if (prs.length > 0) {
-        try {
-          const existing: PREvent[] = JSON.parse(
-            localStorage.getItem(STORAGE_KEYS.PR_EVENTS) || "[]"
-          );
-          const existingIds = new Set(existing.map((e) => e.id));
-          const newPrs = prs.filter((e) => !existingIds.has(e.id));
-          if (newPrs.length > 0) {
-            localStorage.setItem(
-              STORAGE_KEYS.PR_EVENTS,
-              JSON.stringify([...newPrs, ...existing])
-            );
-          }
-        } catch {
-          localStorage.setItem(STORAGE_KEYS.PR_EVENTS, JSON.stringify(prs));
-        }
-
+        addPREvents(prs);
         for (const pr of prs) {
           const exName = getExercise(pr.exerciseId)?.name ?? "Übung";
           toast.success(`🏆 Neuer PR: ${exName}`, {

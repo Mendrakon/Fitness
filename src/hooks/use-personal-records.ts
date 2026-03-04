@@ -1,72 +1,121 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useLocalStorage } from "./use-local-storage";
-import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createClient } from "@/lib/supabase";
 import { backfillPRs } from "@/lib/pr-detection";
 import type { Workout, AppSettings, PREvent, PRMetric } from "@/lib/types";
 
-const BACKFILL_DONE_KEY = "fitness-pr-backfill-done";
+type DbEvent = {
+  id: string;
+  exercise_id: string;
+  workout_id: string;
+  date: string;
+  metric: string;
+  new_value: number;
+  old_value: number;
+  diff: number;
+  diff_percent: number;
+  weight: number;
+  reps: number;
+  volume: number;
+  estimated_1rm: number;
+};
 
-function runBackfillIfNeeded(
-  workouts: Workout[],
-  settings: AppSettings,
-  setPrEvents: (value: PREvent[] | ((prev: PREvent[]) => PREvent[])) => void
-) {
-  if (localStorage.getItem(BACKFILL_DONE_KEY)) return;
-
-  const completedWorkouts = workouts.filter((w) => w.endTime);
-  if (completedWorkouts.length === 0) return;
-
-  localStorage.setItem(BACKFILL_DONE_KEY, "1");
-
-  const events = backfillPRs(workouts, settings);
-  if (events.length > 0) {
-    const raw = localStorage.getItem(STORAGE_KEYS.PR_EVENTS);
-    const existing: PREvent[] = raw ? JSON.parse(raw) : [];
-    const existingIds = new Set(existing.map((e) => e.id));
-    const newEvents = events.filter((e) => !existingIds.has(e.id));
-    const merged = [...newEvents, ...existing];
-    localStorage.setItem(STORAGE_KEYS.PR_EVENTS, JSON.stringify(merged));
-    setPrEvents(merged);
-  }
+function toEvent(row: DbEvent): PREvent {
+  return {
+    id: row.id,
+    exerciseId: row.exercise_id,
+    workoutId: row.workout_id,
+    date: row.date,
+    metric: row.metric as PRMetric,
+    newValue: row.new_value,
+    oldValue: row.old_value,
+    diff: row.diff,
+    diffPercent: row.diff_percent,
+    weight: row.weight,
+    reps: row.reps,
+    volume: row.volume,
+    estimated1rm: row.estimated_1rm,
+  };
 }
 
-export function usePersonalRecords(
-  workouts?: Workout[],
-  settings?: AppSettings
-) {
-  const [prEvents, setPrEvents] = useLocalStorage<PREvent[]>(STORAGE_KEYS.PR_EVENTS, []);
+function toRow(event: PREvent, userId: string) {
+  return {
+    id: event.id,
+    user_id: userId,
+    exercise_id: event.exerciseId,
+    workout_id: event.workoutId,
+    date: event.date,
+    metric: event.metric,
+    new_value: event.newValue,
+    old_value: event.oldValue,
+    diff: event.diff,
+    diff_percent: event.diffPercent,
+    weight: event.weight,
+    reps: event.reps,
+    volume: event.volume,
+    estimated_1rm: event.estimated1rm,
+  };
+}
+
+export function usePersonalRecords(workouts?: Workout[], settings?: AppSettings) {
+  const [prEvents, setPrEvents] = useState<PREvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const didBackfill = useRef(false);
 
-  // One-time backfill on mount
   useEffect(() => {
+    const client = createClient();
+    client.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { setLoading(false); return; }
+      client
+        .from("pr_events")
+        .select("*")
+        .order("date", { ascending: false })
+        .then(({ data }) => {
+          if (data) setPrEvents(data.map(toEvent));
+          setLoading(false);
+        });
+    });
+  }, []);
+
+  const addPREvents = useCallback(async (events: PREvent[]) => {
+    if (events.length === 0) return;
+    const client = createClient();
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+
+    await client.from("pr_events").upsert(events.map(e => toRow(e, user.id)));
+
+    setPrEvents(prev => {
+      const existing = new Set(prev.map(e => e.id));
+      const newEvents = events.filter(e => !existing.has(e.id));
+      return [...newEvents, ...prev];
+    });
+  }, []);
+
+  // One-time backfill: if user has workouts but no PRs yet, generate them
+  useEffect(() => {
+    if (loading) return;
     if (didBackfill.current) return;
-    if (!workouts || !settings) return;
+    if (!workouts?.length || !settings) return;
     didBackfill.current = true;
-    runBackfillIfNeeded(workouts, settings, setPrEvents);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workouts?.length]);
+
+    if (prEvents.length > 0) return;
+
+    const events = backfillPRs(workouts, settings);
+    if (events.length > 0) {
+      addPREvents(events);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, workouts?.length]);
 
   const sorted = useMemo(
     () => [...prEvents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [prEvents]
   );
 
-  const addPREvents = useCallback(
-    (events: PREvent[]) => {
-      if (events.length === 0) return;
-      setPrEvents((prev) => {
-        const existing = new Set(prev.map((e) => e.id));
-        const newEvents = events.filter((e) => !existing.has(e.id));
-        return [...newEvents, ...prev];
-      });
-    },
-    [setPrEvents]
-  );
-
   const getForExercise = useCallback(
-    (exerciseId: string) => sorted.filter((e) => e.exerciseId === exerciseId),
+    (exerciseId: string) => sorted.filter(e => e.exerciseId === exerciseId),
     [sorted]
   );
 
@@ -77,9 +126,7 @@ export function usePersonalRecords(
 
   const getTimeline = useCallback(
     (exerciseId: string, metric: PRMetric) =>
-      sorted
-        .filter((e) => e.exerciseId === exerciseId && e.metric === metric)
-        .reverse(),
+      sorted.filter(e => e.exerciseId === exerciseId && e.metric === metric).reverse(),
     [sorted]
   );
 
