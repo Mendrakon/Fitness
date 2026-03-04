@@ -22,13 +22,21 @@ import { useState } from "react";
 export default function WorkoutDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { getById, deleteWorkout } = useWorkouts();
+  const { getById, deleteWorkout, loading } = useWorkouts();
   const { saveWorkoutAsTemplate } = useTemplates();
   const { getById: getExercise } = useExercises();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const workout = getById(id);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Lädt…</p>
+      </div>
+    );
+  }
 
   if (!workout) {
     return (

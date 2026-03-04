@@ -28,9 +28,8 @@ import { useSettings } from "@/hooks/use-settings";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
-import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
-import type { SetTag, RPE, WorkoutExercise, PREvent, Workout, Template } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise, PREvent, Template } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -435,15 +434,8 @@ export default function WorkoutPage() {
     if (finished) {
       save(finished);
 
-      // PR Detection — read workouts directly from localStorage for reliability
-      let allWorkouts: Workout[] = [];
-      try {
-        allWorkouts = JSON.parse(
-          localStorage.getItem(STORAGE_KEYS.WORKOUTS) || "[]"
-        );
-      } catch { /* empty */ }
-
-      const prs = detectPRs(finished, allWorkouts, settings);
+      // PR Detection — use workouts already loaded from DB
+      const prs = detectPRs(finished, workouts, settings);
       if (prs.length > 0) {
         try {
           const existing: PREvent[] = JSON.parse(
