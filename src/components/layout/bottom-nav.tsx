@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
 import { formatDuration } from "@/lib/calculations";
 import { usePendingRequests } from "@/hooks/use-pending-requests";
+import { useNewCommunityPosts } from "@/hooks/use-new-community-posts";
 
 const tabs = [
   { href: "/", icon: Home, label: "Home" },
@@ -22,6 +23,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const { activeWorkout, elapsedSeconds } = useActiveWorkout();
   const pendingRequests = usePendingRequests();
+  const newCommunityPosts = useNewCommunityPosts();
 
   if (pathname === "/login" || pathname === "/register") return null;
 
@@ -64,7 +66,11 @@ export function BottomNav() {
             );
           }
 
-          const showBadge = tab.href === "/friends" && pendingRequests > 0;
+          const showBadge =
+            (tab.href === "/friends" && pendingRequests > 0) ||
+            (tab.href === "/community" && newCommunityPosts > 0);
+          const badgeCount =
+            tab.href === "/friends" ? pendingRequests : newCommunityPosts;
 
           return (
             <Link
@@ -79,7 +85,7 @@ export function BottomNav() {
                 <Icon className="h-5 w-5" />
                 {showBadge && (
                   <span className="absolute -top-1 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white leading-none">
-                    {pendingRequests > 9 ? "9+" : pendingRequests}
+                    {badgeCount > 9 ? "9+" : badgeCount}
                   </span>
                 )}
               </div>
