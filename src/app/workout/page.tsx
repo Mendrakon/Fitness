@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
   ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer, Clock,
+  Globe, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { useTemplates } from "@/hooks/use-templates";
 import { useExercises } from "@/hooks/use-exercises";
 import { useSettings } from "@/hooks/use-settings";
 import { usePersonalRecords } from "@/hooks/use-personal-records";
+import { useActivityFeed, type FeedVisibility } from "@/hooks/use-activity-feed";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
@@ -412,6 +414,7 @@ export default function WorkoutPage() {
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
   const { addPREvents } = usePersonalRecords();
+  const { createFeedEvent } = useActivityFeed();
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
@@ -421,9 +424,72 @@ export default function WorkoutPage() {
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const pendingShareRef = useRef<Parameters<typeof createFeedEvent>[1] | null>(null);
+
+  const handleShare = (visibility: FeedVisibility | null) => {
+    setShareDialogOpen(false);
+    if (visibility && pendingShareRef.current) {
+      createFeedEvent("workout_complete", pendingShareRef.current, visibility);
+    }
+    pendingShareRef.current = null;
+    setTimeout(() => router.push("/"), 100);
+  };
 
   if (!activeWorkout) {
-    return <WorkoutStartScreen />;
+    return (
+      <>
+        <WorkoutStartScreen />
+        <Dialog open={shareDialogOpen} onOpenChange={() => handleShare(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Workout teilen?</DialogTitle>
+              <DialogDescription>
+                Wähle, wer dein Workout sehen kann. PRs werden mit dem gleichen Sichtbarkeits-Setting geteilt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 py-1">
+              <button
+                onClick={() => handleShare("global")}
+                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                  <Globe className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Global</p>
+                  <p className="text-xs text-muted-foreground">Alle FitTrack-Nutzer können es sehen</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleShare("friends")}
+                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
+                  <Users className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Nur Freunde</p>
+                  <p className="text-xs text-muted-foreground">Nur deine Freunde sehen es</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleShare(null)}
+                className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Nicht teilen</p>
+                  <p className="text-xs text-muted-foreground">Nur in deinem eigenen Verlauf sichtbar</p>
+                </div>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
 
   const isUserTemplate = !!(
@@ -438,6 +504,7 @@ export default function WorkoutPage() {
 
       // PR Detection — use workouts already loaded from DB
       const prs = detectPRs(finished, workouts, settings);
+      const prSummaries: import("@/hooks/use-activity-feed").PRSummary[] = [];
       if (prs.length > 0) {
         addPREvents(prs);
         for (const pr of prs) {
@@ -446,8 +513,34 @@ export default function WorkoutPage() {
             description: `${PR_METRIC_LABELS[pr.metric]}: ${formatPRDiff(pr)}`,
             duration: 5000,
           });
+          prSummaries.push({
+            exerciseName: exName,
+            weight: pr.weight,
+            reps: pr.reps,
+            diff: pr.diff,
+            metric: pr.metric,
+          });
         }
       }
+
+      // Build workout payload for optional sharing
+      const durationMs =
+        new Date(finished.endTime!).getTime() - new Date(finished.startTime).getTime();
+      const exercisesWithSets = finished.exercises.filter(e =>
+        e.sets.some(s => s.completed)
+      );
+      const totalVolume = finished.exercises.reduce((acc, ex) =>
+        acc + ex.sets
+          .filter(s => s.completed && s.weight && s.reps)
+          .reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), 0), 0
+      );
+      pendingShareRef.current = {
+        workoutName: finished.name,
+        exerciseCount: exercisesWithSets.length,
+        durationMinutes: Math.round(durationMs / 60000),
+        totalVolume,
+        prs: prSummaries,
+      };
 
       if (saveAsTemplate && templateName.trim()) {
         saveWorkoutAsTemplate(finished, templateName.trim());
@@ -457,8 +550,7 @@ export default function WorkoutPage() {
       }
     }
     setFinishDialogOpen(false);
-    // Small delay to let toasts render before navigating
-    setTimeout(() => router.push("/"), 100);
+    setShareDialogOpen(true);
   };
 
   const handleDiscard = () => {
@@ -973,6 +1065,56 @@ export default function WorkoutPage() {
               Verwerfen
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={() => handleShare(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Workout teilen?</DialogTitle>
+            <DialogDescription>
+              Wähle, wer dein Workout sehen kann. PRs werden mit dem gleichen Sichtbarkeits-Setting geteilt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-1">
+            <button
+              onClick={() => handleShare("global")}
+              className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                <Globe className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Global</p>
+                <p className="text-xs text-muted-foreground">Alle FitTrack-Nutzer können es sehen</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleShare("friends")}
+              className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
+                <Users className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Nur Freunde</p>
+                <p className="text-xs text-muted-foreground">Nur deine Freunde sehen es</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleShare(null)}
+              className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-left hover:bg-muted transition-colors"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Nicht teilen</p>
+                <p className="text-xs text-muted-foreground">Nur in deinem eigenen Verlauf sichtbar</p>
+              </div>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
