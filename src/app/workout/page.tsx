@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
   ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer, Clock,
-  Globe, Users, X,
+  Globe, Users, X, Share2, Play, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import { useTemplates } from "@/hooks/use-templates";
 import { useExercises } from "@/hooks/use-exercises";
 import { useSettings } from "@/hooks/use-settings";
 import { usePersonalRecords } from "@/hooks/use-personal-records";
-import { useActivityFeed, type FeedVisibility } from "@/hooks/use-activity-feed";
+import { useActivityFeed, shareTemplateToFeed, type FeedVisibility } from "@/hooks/use-activity-feed";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
@@ -246,6 +246,7 @@ function TemplateCard({
   timeLabel,
   onStart,
   onDelete,
+  onShare,
   isExample,
 }: {
   template: Template;
@@ -253,6 +254,7 @@ function TemplateCard({
   timeLabel: string | null;
   onStart: () => void;
   onDelete?: () => void;
+  onShare?: () => void;
   isExample?: boolean;
 }) {
   return (
@@ -277,13 +279,22 @@ function TemplateCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-              <DropdownMenuItem onClick={onStart}>Starten</DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/templates/${template.id}`}>Bearbeiten</Link>
+              <DropdownMenuItem onClick={onStart}>
+                <Play className="mr-2 h-4 w-4" /> Starten
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/templates/${template.id}`}>
+                  <Pencil className="mr-2 h-4 w-4" /> Bearbeiten
+                </Link>
+              </DropdownMenuItem>
+              {onShare && (
+                <DropdownMenuItem onClick={onShare}>
+                  <Share2 className="mr-2 h-4 w-4" /> Im Feed teilen
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive" onClick={onDelete}>
-                Löschen
+                <Trash2 className="mr-2 h-4 w-4" /> Löschen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -320,6 +331,11 @@ function WorkoutStartScreen() {
   const handleStartTemplate = (tmpl: Template, isUserTemplate: boolean) => {
     startFromTemplate(tmpl);
     if (isUserTemplate) markUsed(tmpl.id);
+  };
+
+  const handleShare = async (tmpl: Template) => {
+    await shareTemplateToFeed(tmpl, (id) => getExercise(id)?.name ?? "Unbekannte Übung");
+    toast.success("Vorlage geteilt", { description: "Im Community-Feed sichtbar." });
   };
 
   return (
@@ -369,6 +385,7 @@ function WorkoutStartScreen() {
                   timeLabel={formatLastUsed(tmpl.lastUsed ?? tmpl.updatedAt)}
                   onStart={() => handleStartTemplate(tmpl, true)}
                   onDelete={() => deleteTemplate(tmpl.id)}
+                  onShare={() => handleShare(tmpl)}
                 />
               ))}
             </div>

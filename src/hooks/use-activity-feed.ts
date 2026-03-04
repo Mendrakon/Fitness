@@ -2,8 +2,103 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
+import type { Template, SetTag } from "@/lib/types";
 
-export type FeedEventType = "pr" | "workout_complete";
+export type FeedEventType = "pr" | "workout_complete" | "template_share";
+
+// ── Template share payload ────────────────────────────────────────────────────
+
+export interface TemplateShareExercise {
+  exerciseId: string;
+  exerciseName: string;
+  sets: Array<{ reps: number | null; tag: SetTag }>;
+}
+
+export interface TemplateSharePayload {
+  templateName: string;
+  exercises: TemplateShareExercise[];
+}
+
+const TEMPLATE_SET_TAGS: Set<Exclude<SetTag, null>> = new Set([
+  "warmup",
+  "dropset",
+  "failure",
+]);
+
+function normalizeSetTag(tag: unknown): SetTag {
+  if (tag === null || tag === undefined) return null;
+  if (typeof tag !== "string") return null;
+  return TEMPLATE_SET_TAGS.has(tag as Exclude<SetTag, null>)
+    ? (tag as Exclude<SetTag, null>)
+    : null;
+}
+
+function normalizeTemplateSharePayload(payload: unknown): TemplateSharePayload {
+  const raw = payload as {
+    templateName?: unknown;
+    exercises?: Array<{
+      exerciseId?: unknown;
+      exerciseName?: unknown;
+      sets?: Array<{ reps?: unknown; tag?: unknown }>;
+    }>;
+  };
+
+  const exercises: TemplateShareExercise[] = [];
+  const rawExercises = Array.isArray(raw?.exercises) ? raw.exercises : [];
+
+  for (const exercise of rawExercises) {
+    if (typeof exercise?.exerciseId !== "string" || !exercise.exerciseId) continue;
+
+    const sets = Array.isArray(exercise.sets) ? exercise.sets : [];
+    exercises.push({
+      exerciseId: exercise.exerciseId,
+      exerciseName:
+        typeof exercise.exerciseName === "string" && exercise.exerciseName.trim().length > 0
+          ? exercise.exerciseName
+          : "Unbekannte Übung",
+      // Keep only reps + tag from shared payload (no carried-over weights).
+      sets: sets.map((set) => ({
+        reps: typeof set?.reps === "number" ? set.reps : null,
+        tag: normalizeSetTag(set?.tag),
+      })),
+    });
+  }
+
+  return {
+    templateName:
+      typeof raw?.templateName === "string" && raw.templateName.trim().length > 0
+        ? raw.templateName
+        : "Geteilte Vorlage",
+    exercises,
+  };
+}
+
+// Standalone function – does NOT mount the full feed hook.
+export async function shareTemplateToFeed(
+  template: Template,
+  getExerciseName: (id: string) => string,
+  visibility: FeedVisibility = "global"
+): Promise<void> {
+  const client = createClient();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return;
+
+  const payload: TemplateSharePayload = {
+    templateName: template.name,
+    exercises: template.exercises.map((te) => ({
+      exerciseId: te.exerciseId,
+      exerciseName: getExerciseName(te.exerciseId),
+      sets: te.sets.map((s) => ({ reps: s.reps, tag: s.tag })),
+    })),
+  };
+
+  await client.from("feed_events").insert({
+    user_id: user.id,
+    type: "template_share",
+    visibility,
+    payload,
+  });
+}
 
 export interface PRSummary {
   exerciseName: string;
@@ -25,7 +120,7 @@ export interface FeedEvent {
   id: string;
   userId: string;
   type: FeedEventType;
-  payload: WorkoutPayload;
+  payload: WorkoutPayload | TemplateSharePayload;
   createdAt: string;
   profile: {
     username: string;
@@ -152,11 +247,16 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     const mapped: FeedEvent[] = rows.map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
       const rxn = reactionsByEvent.get(row.id) ?? { count: 0, likedByMe: false };
+      const type = row.type as FeedEventType;
+      const payload =
+        type === "template_share"
+          ? normalizeTemplateSharePayload(row.payload)
+          : (row.payload as WorkoutPayload);
       return {
         id: row.id,
         userId: row.user_id,
-        type: row.type as FeedEventType,
-        payload: row.payload as WorkoutPayload,
+        type,
+        payload,
         createdAt: row.created_at,
         profile: {
           username: profile?.username ?? "Unknown",

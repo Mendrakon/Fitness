@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Folder, Play, MoreVertical, Copy, Trash2, Dumbbell, FolderPlus } from "lucide-react";
+import { Plus, Folder, Play, MoreVertical, Copy, Trash2, Dumbbell, FolderPlus, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,10 @@ import { useTemplates } from "@/hooks/use-templates";
 import { useFolders } from "@/hooks/use-folders";
 import { useExercises } from "@/hooks/use-exercises";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
+import { shareTemplateToFeed } from "@/hooks/use-activity-feed";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { toast } from "sonner";
 
 export default function TemplatesPage() {
   const router = useRouter();
@@ -42,6 +44,14 @@ export default function TemplatesPage() {
       setFolderName("");
       setFolderDialogOpen(false);
     }
+  };
+
+  const handleShare = async (template: typeof templates[0]) => {
+    await shareTemplateToFeed(
+      template,
+      (id) => getExercise(id)?.name ?? "Unbekannte Übung"
+    );
+    toast.success("Vorlage geteilt", { description: "Im Community-Feed sichtbar." });
   };
 
   const handleStart = (template: typeof templates[0]) => {
@@ -148,6 +158,9 @@ export default function TemplatesPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => duplicate(t.id)}>
                       <Copy className="mr-2 h-4 w-4" /> Duplizieren
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShare(t)}>
+                      <Share2 className="mr-2 h-4 w-4" /> Im Feed teilen
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"

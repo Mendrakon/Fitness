@@ -77,6 +77,7 @@ export interface Template {
   lastUsed: string | null;
   createdAt: string;
   updatedAt: string;
+  sourceEventId?: string; // set when saved from a community feed post
 }
 
 export interface Folder {

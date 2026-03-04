@@ -4,8 +4,10 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { v4 as uuid } from "uuid";
 import {
   Heart, MessageCircle, Trophy, Dumbbell, RefreshCw, ChevronDown, ChevronUp, Send,
+  LayoutTemplate, Check,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,8 +22,11 @@ import {
   type PRSummary,
   type FeedComment,
   type CurrentUserProfile,
+  type TemplateSharePayload,
 } from "@/hooks/use-activity-feed";
+import { useTemplates } from "@/hooks/use-templates";
 import { PR_METRIC_LABELS } from "@/lib/types";
+import type { Template } from "@/lib/types";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +83,6 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
 
   return (
     <div className="mt-2 rounded-xl border border-border bg-muted/40 overflow-hidden">
-      {/* Workout summary row */}
       <div className="flex items-center gap-2 p-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
           <Dumbbell className="h-4 w-4 text-primary" />
@@ -91,7 +95,6 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
           </p>
         </div>
         {hasPRs && (
-          // min-h-[44px] for Apple HIG touch target
           <button
             onClick={() => setShowPRs((v) => !v)}
             className="flex items-center gap-1 shrink-0 rounded-lg bg-yellow-500/10 px-3 min-h-[44px] text-yellow-700 hover:bg-yellow-500/20 active:bg-yellow-500/30 transition-colors"
@@ -102,12 +105,101 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
           </button>
         )}
       </div>
-
-      {/* PR list */}
       {hasPRs && showPRs && (
         <div className="border-t border-border/60 px-3 pb-2 divide-y divide-border/40">
-          {prs.map((pr, i) => (
-            <PRRow key={i} pr={pr} />
+          {prs.map((pr, i) => <PRRow key={i} pr={pr} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Set summary helper ────────────────────────────────────────────────────────
+
+function formatSets(sets: TemplateSharePayload["exercises"][0]["sets"]): string {
+  // Group by reps count and format as "3 × 8, 1 × 6 Wdh"
+  const groups = new Map<number | null, number>();
+  for (const s of sets) {
+    groups.set(s.reps, (groups.get(s.reps) ?? 0) + 1);
+  }
+  return Array.from(groups.entries())
+    .map(([reps, count]) => `${count} × ${reps ?? "?"} Wdh`)
+    .join(", ");
+}
+
+// ── Template share card content ───────────────────────────────────────────────
+
+function TemplateShareContent({
+  payload,
+  eventId,
+  templates,
+  isOwnEvent,
+  onSave,
+}: {
+  payload: TemplateSharePayload;
+  eventId: string;
+  templates: Template[];
+  isOwnEvent: boolean;
+  onSave: (payload: TemplateSharePayload, eventId: string) => void;
+}) {
+  const [showExercises, setShowExercises] = useState(false);
+  const alreadySaved = templates.some((t) => t.sourceEventId === eventId);
+
+  return (
+    <div className="mt-2 rounded-xl border border-border bg-muted/40 overflow-hidden">
+      {/* Template header row */}
+      <div className="flex items-center gap-2 p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
+          <LayoutTemplate className="h-4 w-4 text-blue-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate">{payload.templateName}</p>
+          <p className="text-xs text-muted-foreground">
+            {payload.exercises.length} Übungen
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Details toggle — 44pt touch target */}
+          <button
+            onClick={() => setShowExercises((v) => !v)}
+            className="flex items-center gap-1 rounded-lg bg-muted px-3 min-h-[44px] text-xs font-medium text-foreground hover:bg-muted/60 active:bg-muted/40 transition-colors"
+          >
+            Details
+            {showExercises ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          {/* Save button — 44pt touch target */}
+          {!isOwnEvent && (alreadySaved ? (
+            <div className="flex items-center gap-1 px-3 min-h-[44px] text-xs font-medium text-green-600">
+              <Check className="h-3.5 w-3.5" />
+              <span>Gespeichert</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => onSave(payload, eventId)}
+              className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 min-h-[44px] text-xs font-medium text-primary hover:bg-primary/20 active:bg-primary/30 transition-colors"
+            >
+              <Check className="h-3.5 w-3.5" />
+              <span>Speichern</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Exercise list */}
+      {showExercises && (
+        <div className="border-t border-border/60 divide-y divide-border/40">
+          {payload.exercises.map((ex, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 shrink-0">
+                <Dumbbell className="h-3 w-3 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{ex.exerciseName}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatSets(ex.sets)}
+                </p>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -146,7 +238,6 @@ function CommentSection({
     const savedText = text.trim();
     const tempId = `temp-${Date.now()}`;
 
-    // Optimistic: show comment immediately
     const optimisticComment: FeedComment = {
       id: tempId,
       eventId,
@@ -164,11 +255,9 @@ function CommentSection({
 
     try {
       await addComment(eventId, savedText);
-      // Replace optimistic comment with real data from server
       const data = await fetchComments(eventId);
       setComments(data);
     } catch {
-      // Rollback on error
       setComments((prev) => (prev ?? []).filter((c) => c.id !== tempId));
       setText(savedText);
     } finally {
@@ -201,7 +290,6 @@ function CommentSection({
           </div>
         </div>
       ))}
-      {/* Input row — min-h-[44px] for touch targets */}
       <div className="flex gap-2 pt-1">
         <Input
           value={text}
@@ -210,7 +298,6 @@ function CommentSection({
           className="h-11 text-sm"
           onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
         />
-        {/* 44×44pt minimum touch target */}
         <Button
           size="icon"
           variant="ghost"
@@ -230,13 +317,17 @@ function CommentSection({
 function FeedCard({
   event,
   currentUserProfile,
+  templates,
   onLike,
+  onSaveTemplate,
   fetchComments,
   addComment,
 }: {
   event: FeedEvent;
   currentUserProfile: CurrentUserProfile | null;
+  templates: Template[];
   onLike: (id: string) => void;
+  onSaveTemplate: (payload: TemplateSharePayload, eventId: string) => void;
   fetchComments: (id: string) => Promise<FeedComment[]>;
   addComment: (id: string, text: string) => Promise<void>;
 }) {
@@ -254,11 +345,15 @@ function FeedCard({
 
   const goToProfile = () => router.push(`/profile/${event.userId}`);
 
+  const subtitle =
+    event.type === "template_share"
+      ? "hat eine Vorlage geteilt"
+      : "hat ein Workout abgeschlossen";
+
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-3 space-y-3">
       {/* Header */}
       <div className="flex items-start gap-3">
-        {/* Avatar tap target ≥ 44pt */}
         <button
           onClick={goToProfile}
           className="shrink-0 -m-1 p-1 rounded-full"
@@ -270,15 +365,25 @@ function FeedCard({
           <button onClick={goToProfile} className="text-left min-h-[44px] flex items-center">
             <p className="text-sm font-semibold truncate hover:underline">{event.profile.username}</p>
           </button>
-          <p className="text-xs text-muted-foreground -mt-2">hat ein Workout abgeschlossen</p>
+          <p className="text-xs text-muted-foreground -mt-2">{subtitle}</p>
         </div>
         <span className="text-[10px] text-muted-foreground shrink-0 pt-1">{timeAgo}</span>
       </div>
 
-      {/* Workout content with embedded PRs */}
-      <WorkoutContent payload={event.payload as WorkoutPayload} />
+      {/* Content — workout or template */}
+      {event.type === "template_share" ? (
+        <TemplateShareContent
+          payload={event.payload as TemplateSharePayload}
+          eventId={event.id}
+          templates={templates}
+          isOwnEvent={event.userId === currentUserProfile?.userId}
+          onSave={onSaveTemplate}
+        />
+      ) : (
+        <WorkoutContent payload={event.payload as WorkoutPayload} />
+      )}
 
-      {/* Actions — each button ≥ 44×44pt touch target */}
+      {/* Actions */}
       <div className="flex items-center gap-2 -mx-1">
         <button
           onClick={handleLike}
@@ -301,7 +406,6 @@ function FeedCard({
         </button>
       </div>
 
-      {/* Comments */}
       {showComments && (
         <CommentSection
           eventId={event.id}
@@ -365,13 +469,37 @@ export default function CommunityPage() {
   const [filter, setFilter] = useState<FeedFilter>("global");
   const { events, loading, currentUserProfile, toggleLike, fetchComments, addComment, refresh } =
     useActivityFeed(filter);
+  const { templates, create: createTemplate } = useTemplates();
+
+  const handleSaveTemplate = (payload: TemplateSharePayload, eventId: string) => {
+    if (templates.some((t) => t.sourceEventId === eventId)) return;
+    const event = events.find((e) => e.id === eventId);
+    if (event?.userId === currentUserProfile?.userId) return;
+    createTemplate({
+      name: payload.templateName,
+      folderId: null,
+      notes: "",
+      sourceEventId: eventId,
+      exercises: payload.exercises.map((ex) => ({
+        id: uuid(),
+        exerciseId: ex.exerciseId,
+        notes: "",
+        sets: ex.sets.map((s) => ({
+          id: uuid(),
+          weight: null,
+          reps: s.reps,
+          tag: s.tag,
+          rpe: null,
+        })),
+      })),
+    });
+  };
 
   return (
     <div className="flex flex-col">
       <PageHeader
         title="Community"
         rightAction={
-          // 44×44pt minimum touch target for refresh
           <button
             onClick={refresh}
             className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/80 transition-colors"
@@ -381,7 +509,7 @@ export default function CommunityPage() {
         }
       />
 
-      {/* Filter Tabs — py-3 ensures ≥ 44pt height */}
+      {/* Filter Tabs */}
       <div className="px-4 pt-3 pb-1">
         <div className="flex gap-1 rounded-xl bg-muted p-1">
           {(["global", "friends"] as FeedFilter[]).map((f) => (
@@ -413,7 +541,9 @@ export default function CommunityPage() {
               key={event.id}
               event={event}
               currentUserProfile={currentUserProfile}
+              templates={templates}
               onLike={toggleLike}
+              onSaveTemplate={handleSaveTemplate}
               fetchComments={fetchComments}
               addComment={addComment}
             />
