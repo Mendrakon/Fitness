@@ -51,10 +51,17 @@ export interface FeedComment {
 export type FeedFilter = "global" | "friends";
 export type FeedVisibility = "global" | "friends";
 
+export interface CurrentUserProfile {
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+}
+
 export function useActivityFeed(filter: FeedFilter = "global") {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendIds, setFriendIds] = useState<string[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<CurrentUserProfile | null>(null);
   const currentUserId = useRef<string | null>(null);
 
   // Load current user and friend IDs
@@ -64,16 +71,30 @@ export function useActivityFeed(filter: FeedFilter = "global") {
       if (!user) { setLoading(false); return; }
       currentUserId.current = user.id;
 
-      const { data: friendships } = await client
-        .from("friendships")
-        .select("sender_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+      const [{ data: friendships }, { data: profile }] = await Promise.all([
+        client
+          .from("friendships")
+          .select("sender_id, receiver_id")
+          .eq("status", "accepted")
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+        client
+          .from("profiles")
+          .select("username, avatar_url")
+          .eq("id", user.id)
+          .single(),
+      ]);
 
       const ids = (friendships ?? []).map((f) =>
         f.sender_id === user.id ? f.receiver_id : f.sender_id
       );
       setFriendIds(ids);
+      if (profile) {
+        setCurrentUserProfile({
+          userId: user.id,
+          username: profile.username ?? "Du",
+          avatarUrl: profile.avatar_url ?? null,
+        });
+      }
     });
   }, []);
 
@@ -156,36 +177,41 @@ export function useActivityFeed(filter: FeedFilter = "global") {
   }, [fetchFeed]);
 
   const toggleLike = useCallback(async (eventId: string) => {
-    const client = createClient();
-    const { data: { user } } = await client.auth.getUser();
-    if (!user) return;
-
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
 
-    if (event.likedByMe) {
-      await client
-        .from("feed_reactions")
-        .delete()
-        .eq("event_id", eventId)
-        .eq("user_id", user.id);
+    // Optimistic update immediately
+    const wasLiked = event.likedByMe;
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === eventId
+          ? { ...e, likedByMe: !wasLiked, likeCount: wasLiked ? e.likeCount - 1 : e.likeCount + 1 }
+          : e
+      )
+    );
 
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === eventId
-            ? { ...e, likedByMe: false, likeCount: e.likeCount - 1 }
-            : e
-        )
-      );
-    } else {
-      await client.from("feed_reactions").insert({ event_id: eventId, user_id: user.id });
+    try {
+      const client = createClient();
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
+      if (wasLiked) {
+        const { error } = await client
+          .from("feed_reactions")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await client
+          .from("feed_reactions")
+          .insert({ event_id: eventId, user_id: user.id });
+        if (error) throw error;
+      }
+    } catch {
+      // Rollback on error
       setEvents((prev) =>
-        prev.map((e) =>
-          e.id === eventId
-            ? { ...e, likedByMe: true, likeCount: e.likeCount + 1 }
-            : e
-        )
+        prev.map((e) => (e.id === eventId ? event : e))
       );
     }
   }, [events]);
@@ -223,11 +249,13 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     const { data: { user } } = await client.auth.getUser();
     if (!user || !content.trim()) return;
 
-    await client.from("feed_comments").insert({
+    const { error } = await client.from("feed_comments").insert({
       event_id: eventId,
       user_id: user.id,
       content: content.trim(),
     });
+
+    if (error) throw error;
 
     setEvents((prev) =>
       prev.map((e) =>
@@ -259,6 +287,7 @@ export function useActivityFeed(filter: FeedFilter = "global") {
   return {
     events,
     loading,
+    currentUserProfile,
     toggleLike,
     fetchComments,
     addComment,

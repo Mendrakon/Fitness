@@ -19,6 +19,7 @@ import {
   type WorkoutPayload,
   type PRSummary,
   type FeedComment,
+  type CurrentUserProfile,
 } from "@/hooks/use-activity-feed";
 import { PR_METRIC_LABELS } from "@/lib/types";
 
@@ -30,12 +31,12 @@ function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string |
       <img
         src={avatarUrl}
         alt={username}
-        className="h-9 w-9 rounded-full object-cover shrink-0"
+        className="h-10 w-10 rounded-full object-cover shrink-0"
       />
     );
   }
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
       {username.charAt(0).toUpperCase()}
     </div>
   );
@@ -48,7 +49,7 @@ function PRRow({ pr }: { pr: PRSummary }) {
   const diffSign = pr.diff > 0 ? "+" : "";
   const isReps = pr.metric === "reps" || pr.metric === "reps_bw";
   return (
-    <div className="flex items-center gap-2 py-1.5">
+    <div className="flex items-center gap-2 py-2">
       <Trophy className="h-3.5 w-3.5 shrink-0 text-yellow-500" />
       <div className="flex-1 min-w-0">
         <span className="text-xs font-medium truncate">{pr.exerciseName}</span>
@@ -79,7 +80,7 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
     <div className="mt-2 rounded-xl border border-border bg-muted/40 overflow-hidden">
       {/* Workout summary row */}
       <div className="flex items-center gap-2 p-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
           <Dumbbell className="h-4 w-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
@@ -90,9 +91,10 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
           </p>
         </div>
         {hasPRs && (
+          // min-h-[44px] for Apple HIG touch target
           <button
             onClick={() => setShowPRs((v) => !v)}
-            className="flex items-center gap-1 shrink-0 rounded-lg bg-yellow-500/10 px-2 py-1 text-yellow-700 hover:bg-yellow-500/20 transition-colors"
+            className="flex items-center gap-1 shrink-0 rounded-lg bg-yellow-500/10 px-3 min-h-[44px] text-yellow-700 hover:bg-yellow-500/20 active:bg-yellow-500/30 transition-colors"
           >
             <Trophy className="h-3 w-3" />
             <span className="text-xs font-semibold">{prs.length} PR{prs.length > 1 ? "s" : ""}</span>
@@ -117,10 +119,12 @@ function WorkoutContent({ payload }: { payload: WorkoutPayload }) {
 
 function CommentSection({
   eventId,
+  currentUserProfile,
   fetchComments,
   addComment,
 }: {
   eventId: string;
+  currentUserProfile: CurrentUserProfile | null;
   fetchComments: (id: string) => Promise<FeedComment[]>;
   addComment: (id: string, text: string) => Promise<void>;
 }) {
@@ -137,13 +141,39 @@ function CommentSection({
   };
 
   const handleSend = async () => {
-    if (!text.trim()) return;
-    setSending(true);
-    await addComment(eventId, text);
+    if (!text.trim() || sending) return;
+
+    const savedText = text.trim();
+    const tempId = `temp-${Date.now()}`;
+
+    // Optimistic: show comment immediately
+    const optimisticComment: FeedComment = {
+      id: tempId,
+      eventId,
+      userId: currentUserProfile?.userId ?? "",
+      content: savedText,
+      createdAt: new Date().toISOString(),
+      profile: {
+        username: currentUserProfile?.username ?? "Du",
+        avatarUrl: currentUserProfile?.avatarUrl ?? null,
+      },
+    };
     setText("");
-    const data = await fetchComments(eventId);
-    setComments(data);
-    setSending(false);
+    setSending(true);
+    setComments((prev) => [...(prev ?? []), optimisticComment]);
+
+    try {
+      await addComment(eventId, savedText);
+      // Replace optimistic comment with real data from server
+      const data = await fetchComments(eventId);
+      setComments(data);
+    } catch {
+      // Rollback on error
+      setComments((prev) => (prev ?? []).filter((c) => c.id !== tempId));
+      setText(savedText);
+    } finally {
+      setSending(false);
+    }
   };
 
   if (comments === null && !loading) {
@@ -163,7 +193,7 @@ function CommentSection({
   return (
     <div className="space-y-2 pt-1">
       {comments?.map((c) => (
-        <div key={c.id} className="flex gap-2">
+        <div key={c.id} className={cn("flex gap-2", c.id.startsWith("temp-") && "opacity-60")}>
           <Avatar username={c.profile.username} avatarUrl={c.profile.avatarUrl} />
           <div className="rounded-xl bg-muted/60 px-3 py-2 flex-1 min-w-0">
             <span className="text-xs font-semibold">{c.profile.username} </span>
@@ -171,22 +201,24 @@ function CommentSection({
           </div>
         </div>
       ))}
+      {/* Input row — min-h-[44px] for touch targets */}
       <div className="flex gap-2 pt-1">
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Kommentar schreiben..."
-          className="h-8 text-xs"
+          className="h-11 text-sm"
           onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
         />
+        {/* 44×44pt minimum touch target */}
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8 shrink-0"
+          className="h-11 w-11 shrink-0"
           onClick={handleSend}
           disabled={sending || !text.trim()}
         >
-          <Send className="h-3.5 w-3.5" />
+          <Send className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -197,11 +229,13 @@ function CommentSection({
 
 function FeedCard({
   event,
+  currentUserProfile,
   onLike,
   fetchComments,
   addComment,
 }: {
   event: FeedEvent;
+  currentUserProfile: CurrentUserProfile | null;
   onLike: (id: string) => void;
   fetchComments: (id: string) => Promise<FeedComment[]>;
   addComment: (id: string, text: string) => Promise<void>;
@@ -224,41 +258,46 @@ function FeedCard({
     <div className="rounded-2xl border border-border bg-card px-4 py-3 space-y-3">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <button onClick={goToProfile} className="shrink-0">
+        {/* Avatar tap target ≥ 44pt */}
+        <button
+          onClick={goToProfile}
+          className="shrink-0 -m-1 p-1 rounded-full"
+          style={{ minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
           <Avatar username={event.profile.username} avatarUrl={event.profile.avatarUrl} />
         </button>
         <div className="flex-1 min-w-0">
-          <button onClick={goToProfile} className="text-left">
+          <button onClick={goToProfile} className="text-left min-h-[44px] flex items-center">
             <p className="text-sm font-semibold truncate hover:underline">{event.profile.username}</p>
           </button>
-          <p className="text-xs text-muted-foreground">hat ein Workout abgeschlossen</p>
+          <p className="text-xs text-muted-foreground -mt-2">hat ein Workout abgeschlossen</p>
         </div>
-        <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0 pt-1">{timeAgo}</span>
       </div>
 
       {/* Workout content with embedded PRs */}
       <WorkoutContent payload={event.payload as WorkoutPayload} />
 
-      {/* Actions */}
-      <div className="flex items-center gap-4 pt-0.5">
+      {/* Actions — each button ≥ 44×44pt touch target */}
+      <div className="flex items-center gap-2 -mx-1">
         <button
           onClick={handleLike}
           className={cn(
-            "flex items-center gap-1.5 text-xs transition-colors",
+            "flex items-center gap-1.5 text-xs transition-colors min-h-[44px] min-w-[44px] px-2 rounded-xl active:scale-95",
             event.likedByMe ? "text-red-500" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Heart className={cn("h-4 w-4", event.likedByMe && "fill-current")} />
-          <span>{event.likeCount > 0 ? event.likeCount : ""}</span>
+          <Heart className={cn("h-[18px] w-[18px]", event.likedByMe && "fill-current")} />
+          <span className="tabular-nums">{event.likeCount > 0 ? event.likeCount : ""}</span>
         </button>
 
         <button
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] px-2 rounded-xl active:scale-95"
         >
-          <MessageCircle className="h-4 w-4" />
-          <span>{event.commentCount > 0 ? event.commentCount : ""}</span>
-          {showComments ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <MessageCircle className="h-[18px] w-[18px]" />
+          <span className="tabular-nums">{event.commentCount > 0 ? event.commentCount : ""}</span>
+          {showComments ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
 
@@ -266,6 +305,7 @@ function FeedCard({
       {showComments && (
         <CommentSection
           eventId={event.id}
+          currentUserProfile={currentUserProfile}
           fetchComments={fetchComments}
           addComment={addComment}
         />
@@ -282,7 +322,7 @@ function FeedSkeleton() {
       {[1, 2, 3].map((i) => (
         <div key={i} className="rounded-2xl border border-border bg-card px-4 py-3 space-y-3">
           <div className="flex items-start gap-3">
-            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
             <div className="flex-1 space-y-1.5">
               <Skeleton className="h-3 w-28" />
               <Skeleton className="h-3 w-48" />
@@ -323,7 +363,7 @@ function EmptyFeed({ filter }: { filter: FeedFilter }) {
 
 export default function CommunityPage() {
   const [filter, setFilter] = useState<FeedFilter>("global");
-  const { events, loading, toggleLike, fetchComments, addComment, refresh } =
+  const { events, loading, currentUserProfile, toggleLike, fetchComments, addComment, refresh } =
     useActivityFeed(filter);
 
   return (
@@ -331,16 +371,17 @@ export default function CommunityPage() {
       <PageHeader
         title="Community"
         rightAction={
+          // 44×44pt minimum touch target for refresh
           <button
             onClick={refresh}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/80 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
         }
       />
 
-      {/* Filter Tabs */}
+      {/* Filter Tabs — py-3 ensures ≥ 44pt height */}
       <div className="px-4 pt-3 pb-1">
         <div className="flex gap-1 rounded-xl bg-muted p-1">
           {(["global", "friends"] as FeedFilter[]).map((f) => (
@@ -348,7 +389,7 @@ export default function CommunityPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "flex-1 rounded-lg py-1.5 text-xs font-medium transition-all",
+                "flex-1 rounded-lg py-3 text-xs font-medium transition-all active:scale-[0.98]",
                 filter === f
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -371,6 +412,7 @@ export default function CommunityPage() {
             <FeedCard
               key={event.id}
               event={event}
+              currentUserProfile={currentUserProfile}
               onLike={toggleLike}
               fetchComments={fetchComments}
               addComment={addComment}
