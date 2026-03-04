@@ -241,12 +241,15 @@ export interface FeedComment {
   eventId: string;
   userId: string;
   content: string;
+  deletedAt: string | null;
   createdAt: string;
   profile: {
     username: string;
     avatarUrl: string | null;
   };
 }
+
+export const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht";
 
 export type FeedFilter = "global" | "friends";
 export type FeedVisibility = "global" | "friends";
@@ -426,7 +429,7 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     const { data } = await client
       .from("feed_comments")
       .select(`
-        id, event_id, user_id, content, created_at,
+        id, event_id, user_id, content, deleted_at, created_at,
         profiles!feed_comments_user_id_fkey(username, avatar_url)
       `)
       .eq("event_id", eventId)
@@ -440,6 +443,7 @@ export function useActivityFeed(filter: FeedFilter = "global") {
         eventId: row.event_id,
         userId: row.user_id,
         content: row.content,
+        deletedAt: row.deleted_at ?? null,
         createdAt: row.created_at,
         profile: {
           username: profile?.username ?? "Unknown",
@@ -469,6 +473,53 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     );
   }, []);
 
+  const deleteComment = useCallback(async (eventId: string, commentId: string) => {
+    const client = createClient();
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { error } = await client
+      .from("feed_comments")
+      .update({
+        content: DELETED_COMMENT_TEXT,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq("id", commentId)
+      .eq("event_id", eventId)
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+  }, []);
+
+  const deleteEvent = useCallback(async (eventId: string) => {
+    const existingEvent = events.find((e) => e.id === eventId);
+    if (!existingEvent) return;
+
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+
+    try {
+      const client = createClient();
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await client
+        .from("feed_events")
+        .delete()
+        .eq("id", eventId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    } catch (error) {
+      setEvents((prev) => {
+        if (prev.some((e) => e.id === existingEvent.id)) return prev;
+        return [...prev, existingEvent].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+      throw error;
+    }
+  }, [events]);
+
   const createFeedEvent = useCallback(
     async (
       type: FeedEventType,
@@ -496,6 +547,8 @@ export function useActivityFeed(filter: FeedFilter = "global") {
     toggleLike,
     fetchComments,
     addComment,
+    deleteComment,
+    deleteEvent,
     createFeedEvent,
     refresh: fetchFeed,
   };

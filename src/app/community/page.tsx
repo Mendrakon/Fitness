@@ -7,7 +7,7 @@ import { de } from "date-fns/locale";
 import { v4 as uuid } from "uuid";
 import {
   Heart, MessageCircle, Trophy, Dumbbell, RefreshCw, ChevronDown, ChevronUp, Send,
-  LayoutTemplate, Check,
+  LayoutTemplate, Check, MoreVertical, Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,8 +21,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
+  DELETED_COMMENT_TEXT,
   useActivityFeed,
   type FeedEvent,
   type FeedFilter,
@@ -225,16 +232,19 @@ function CommentSection({
   currentUserProfile,
   fetchComments,
   addComment,
+  deleteComment,
 }: {
   eventId: string;
   currentUserProfile: CurrentUserProfile | null;
   fetchComments: (id: string) => Promise<FeedComment[]>;
   addComment: (id: string, text: string) => Promise<void>;
+  deleteComment: (eventId: string, commentId: string) => Promise<void>;
 }) {
   const [comments, setComments] = useState<FeedComment[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -254,6 +264,7 @@ function CommentSection({
       eventId,
       userId: currentUserProfile?.userId ?? "",
       content: savedText,
+      deletedAt: null,
       createdAt: new Date().toISOString(),
       profile: {
         username: currentUserProfile?.username ?? "Du",
@@ -276,6 +287,32 @@ function CommentSection({
     }
   };
 
+  const handleDeleteComment = async (comment: FeedComment) => {
+    if (deletingCommentId || comment.id.startsWith("temp-") || comment.deletedAt) return;
+    const previous = comments;
+    setDeletingCommentId(comment.id);
+    setComments((prev) =>
+      (prev ?? []).map((c) =>
+        c.id === comment.id
+          ? {
+              ...c,
+              content: DELETED_COMMENT_TEXT,
+              deletedAt: new Date().toISOString(),
+            }
+          : c
+      )
+    );
+
+    try {
+      await deleteComment(eventId, comment.id);
+    } catch {
+      setComments(previous);
+      toast.error("Kommentar konnte nicht gelöscht werden.");
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
+
   if (comments === null && !loading) {
     load();
     return <div className="h-8 flex items-center"><Skeleton className="h-3 w-32" /></div>;
@@ -295,9 +332,28 @@ function CommentSection({
       {comments?.map((c) => (
         <div key={c.id} className={cn("flex gap-2", c.id.startsWith("temp-") && "opacity-60")}>
           <Avatar username={c.profile.username} avatarUrl={c.profile.avatarUrl} />
-          <div className="rounded-xl bg-muted/60 px-3 py-2 flex-1 min-w-0">
-            <span className="text-xs font-semibold">{c.profile.username} </span>
-            <span className="text-xs text-muted-foreground">{c.content}</span>
+          <div className="relative rounded-xl bg-muted/60 px-3 py-2 flex-1 min-w-0">
+            {c.userId === currentUserProfile?.userId && !c.deletedAt && !c.id.startsWith("temp-") && (
+              <button
+                onClick={() => handleDeleteComment(c)}
+                disabled={deletingCommentId === c.id}
+                aria-label="Kommentar löschen"
+                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md text-destructive hover:bg-muted transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <div className="min-w-0 pr-7">
+              <span className="text-xs font-semibold">{c.profile.username} </span>
+              <span
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  c.deletedAt && "italic"
+                )}
+              >
+                {c.deletedAt ? DELETED_COMMENT_TEXT : c.content}
+              </span>
+            </div>
           </div>
         </div>
       ))}
@@ -331,19 +387,25 @@ function FeedCard({
   templates,
   onLike,
   onSaveTemplate,
+  onDeleteEvent,
   fetchComments,
   addComment,
+  deleteComment,
 }: {
   event: FeedEvent;
   currentUserProfile: CurrentUserProfile | null;
   templates: Template[];
   onLike: (id: string) => void;
   onSaveTemplate: (payload: TemplateSharePayload, eventId: string) => void;
+  onDeleteEvent: (eventId: string) => Promise<void>;
   fetchComments: (id: string) => Promise<FeedComment[]>;
   addComment: (id: string, text: string) => Promise<void>;
+  deleteComment: (eventId: string, commentId: string) => Promise<void>;
 }) {
   const router = useRouter();
   const [showComments, setShowComments] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const timeAgo = formatDistanceToNow(new Date(event.createdAt), { addSuffix: true, locale: de });
 
   const isLikeAnimating = useRef(false);
@@ -360,6 +422,20 @@ function FeedCard({
     event.type === "template_share"
       ? "hat eine Vorlage geteilt"
       : "hat ein Workout abgeschlossen";
+  const isOwnEvent = event.userId === currentUserProfile?.userId;
+
+  const handleDeleteEvent = async () => {
+    if (deletingEvent) return;
+    setDeleteDialogOpen(false);
+    setDeletingEvent(true);
+    try {
+      await onDeleteEvent(event.id);
+      toast.success("Feed-Eintrag gelöscht");
+    } catch {
+      toast.error("Feed-Eintrag konnte nicht gelöscht werden.");
+      setDeletingEvent(false);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-3 space-y-3">
@@ -378,7 +454,31 @@ function FeedCard({
           </button>
           <p className="text-xs text-muted-foreground -mt-2">{subtitle}</p>
         </div>
-        <span className="text-[10px] text-muted-foreground shrink-0 pt-1">{timeAgo}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[10px] text-muted-foreground">{timeAgo}</span>
+          {isOwnEvent && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={deletingEvent}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={deletingEvent}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Löschen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Content — workout or template */}
@@ -387,7 +487,7 @@ function FeedCard({
           payload={event.payload as TemplateSharePayload}
           eventId={event.id}
           templates={templates}
-          isOwnEvent={event.userId === currentUserProfile?.userId}
+          isOwnEvent={isOwnEvent}
           onSave={onSaveTemplate}
         />
       ) : (
@@ -423,8 +523,41 @@ function FeedCard({
           currentUserProfile={currentUserProfile}
           fetchComments={fetchComments}
           addComment={addComment}
+          deleteComment={deleteComment}
         />
       )}
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deletingEvent) setDeleteDialogOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feed-Eintrag löschen?</DialogTitle>
+            <DialogDescription>
+              Dieser Eintrag wird dauerhaft gelöscht.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deletingEvent}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteEvent}
+              disabled={deletingEvent}
+            >
+              {deletingEvent ? "Löscht..." : "Löschen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -521,8 +654,17 @@ function findMissingCustomExercises(
 
 export default function CommunityPage() {
   const [filter, setFilter] = useState<FeedFilter>("global");
-  const { events, loading, currentUserProfile, toggleLike, fetchComments, addComment, refresh } =
-    useActivityFeed(filter);
+  const {
+    events,
+    loading,
+    currentUserProfile,
+    toggleLike,
+    fetchComments,
+    addComment,
+    deleteComment,
+    deleteEvent,
+    refresh,
+  } = useActivityFeed(filter);
   const { templates, create: createTemplate } = useTemplates();
   const { getById: getExercise, createCustom } = useExercises();
   const [pendingTemplateSave, setPendingTemplateSave] = useState<PendingTemplateSave | null>(null);
@@ -654,8 +796,10 @@ export default function CommunityPage() {
               templates={templates}
               onLike={toggleLike}
               onSaveTemplate={handleSaveTemplate}
+              onDeleteEvent={deleteEvent}
               fetchComments={fetchComments}
               addComment={addComment}
+              deleteComment={deleteComment}
             />
           ))
         )}
