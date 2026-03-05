@@ -17,7 +17,7 @@ import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import type { WeightUnit, ThemeMode } from "@/lib/types";
+import type { WeightUnit, ThemeMode, AccentColor } from "@/lib/types";
 import { createClient } from "@/lib/supabase";
 
 export default function SettingsPage() {
@@ -338,6 +338,27 @@ export default function SettingsPage() {
                     <Icon className="h-3.5 w-3.5" />
                     {label}
                   </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Farbe</Label>
+              <div className="flex items-center gap-2">
+                {([
+                  { value: "blue"   as AccentColor, color: "oklch(0.55 0.2 260)"  },
+                  { value: "purple" as AccentColor, color: "oklch(0.55 0.22 295)" },
+                  { value: "green"  as AccentColor, color: "oklch(0.52 0.18 145)" },
+                  { value: "orange" as AccentColor, color: "oklch(0.60 0.19 55)"  },
+                  { value: "red"    as AccentColor, color: "oklch(0.55 0.22 25)"  },
+                  { value: "pink"   as AccentColor, color: "oklch(0.56 0.22 330)" },
+                ]).map(({ value, color }) => (
+                  <button
+                    key={value}
+                    onClick={() => update({ accentColor: value })}
+                    className="h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                    style={{ backgroundColor: color, boxShadow: settings.accentColor === value ? `0 0 0 2px white, 0 0 0 4px ${color}` : "none" }}
+                    aria-label={value}
+                  />
                 ))}
               </div>
             </div>

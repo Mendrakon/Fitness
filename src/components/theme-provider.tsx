@@ -31,5 +31,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [settings.theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const accents = ["accent-purple", "accent-green", "accent-orange", "accent-red", "accent-pink"];
+    accents.forEach(c => root.classList.remove(c));
+    if (settings.accentColor && settings.accentColor !== "blue") {
+      root.classList.add(`accent-${settings.accentColor}`);
+    }
+  }, [settings.accentColor]);
+
   return <>{children}</>;
 }

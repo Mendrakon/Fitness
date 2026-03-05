@@ -444,6 +444,13 @@ export default function WorkoutPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const pendingShareRef = useRef<Parameters<typeof createFeedEvent>[1] | null>(null);
 
+  const swipeTouchStartX = useRef<number>(0);
+  const swipingSetId = useRef<string | null>(null);
+  const currentSwipeOffset = useRef<number>(0);
+  const [swipedSetId, setSwipedSetId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const SWIPE_DELETE_THRESHOLD = 80;
+
   const handleShare = (visibility: FeedVisibility | null) => {
     setShareDialogOpen(false);
     if (visibility && pendingShareRef.current) {
@@ -794,7 +801,44 @@ export default function WorkoutPage() {
               {we.sets.map((set, setIdx) => {
                 const prevSet = previousSets?.[setIdx];
                 return (
-                  <div key={set.id}>
+                  <div key={set.id} className="relative overflow-hidden">
+                    {/* Swipe-to-delete background — only rendered while swiping */}
+                    {swipedSetId === set.id && swipeOffset < 0 && (
+                      <div className="absolute inset-0 flex items-center justify-end bg-destructive pr-4 pointer-events-none">
+                        <Trash2 className="h-4 w-4 text-destructive-foreground" />
+                      </div>
+                    )}
+                    {/* Swipe wrapper */}
+                    <div
+                      className="bg-background"
+                      style={{
+                        transform: swipedSetId === set.id ? `translateX(${swipeOffset}px)` : "translateX(0)",
+                        transition: swipedSetId === set.id ? "none" : "transform 0.25s ease",
+                      }}
+                      onTouchStart={(e) => {
+                        swipeTouchStartX.current = e.touches[0].clientX;
+                        swipingSetId.current = set.id;
+                        currentSwipeOffset.current = 0;
+                        setSwipedSetId(set.id);
+                        setSwipeOffset(0);
+                      }}
+                      onTouchMove={(e) => {
+                        if (swipingSetId.current !== set.id) return;
+                        const delta = e.touches[0].clientX - swipeTouchStartX.current;
+                        const offset = delta < 0 ? Math.max(delta, -120) : 0;
+                        currentSwipeOffset.current = offset;
+                        setSwipeOffset(offset);
+                      }}
+                      onTouchEnd={() => {
+                        if (swipingSetId.current === set.id && currentSwipeOffset.current < -SWIPE_DELETE_THRESHOLD) {
+                          removeSet(we.id, set.id);
+                        }
+                        swipingSetId.current = null;
+                        currentSwipeOffset.current = 0;
+                        setSwipeOffset(0);
+                        setSwipedSetId(null);
+                      }}
+                    >
                     <div
                       className={cn(
                         "grid gap-1 items-center px-3 py-1.5",
@@ -921,6 +965,7 @@ export default function WorkoutPage() {
                         </div>
                       </div>
                     )}
+                    </div>{/* end swipe wrapper */}
                   </div>
                 );
               })}

@@ -96,6 +96,8 @@ export interface BodyMeasurement {
 
 export type ThemeMode = "light" | "dark" | "system";
 
+export type AccentColor = "blue" | "purple" | "green" | "orange" | "red" | "pink";
+
 export interface AppSettings {
   weightUnit: WeightUnit;
   defaultRestTimerWork: number;
@@ -104,6 +106,7 @@ export interface AppSettings {
   restTimerAutoStart: boolean;
   showPreviousValues: boolean;
   theme: ThemeMode;
+  accentColor: AccentColor;
   prThresholdWeight: number;
   prThresholdReps: number;
   prThresholdVolumePercent: number;
