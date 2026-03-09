@@ -56,13 +56,14 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         const stored = localStorage.getItem("fitness-settings");
         const notifEnabled = stored ? JSON.parse(stored)?.restTimerNotification !== false : true;
         if (notifEnabled && Notification.permission === "granted") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           new Notification("Pause vorbei!", {
             body: "Du kannst jetzt mit dem nächsten Satz weitermachen.",
             icon: "/icons/icon-192x192.png",
             badge: "/icons/icon-192x192.png",
             tag: "rest-timer",
             renotify: true,
-          });
+          } as any);
         }
       } catch {}
     }
