@@ -25,6 +25,14 @@ export interface Exercise {
   defaultRestTimerWarmup?: number;
 }
 
+export interface CardioData {
+  durationMin: number | null;
+  distanceKm: number | null;
+  speedKmh: number | null;
+  incline: number | null;
+  calories: number | null;
+}
+
 export interface WorkoutSet {
   id: string;
   weight: number | null;
@@ -32,6 +40,7 @@ export interface WorkoutSet {
   completed: boolean;
   tag: SetTag;
   rpe: RPE;
+  cardio?: CardioData;
 }
 
 export interface WorkoutExercise {

@@ -89,4 +89,15 @@ export const BUILT_IN_EXERCISES: Exercise[] = [
   { id: "ex-thruster", name: "Thrusters", category: "barbell", muscleGroup: "full_body", isCustom: false, equipment: "Langhantel" },
   { id: "ex-burpees", name: "Burpees", category: "bodyweight", muscleGroup: "full_body", isCustom: false, equipment: "Körpergewicht" },
   { id: "ex-kettlebell-swing", name: "Kettlebell Swings", category: "kettlebell", muscleGroup: "full_body", isCustom: false, equipment: "Kettlebell" },
+
+  // CARDIO
+  { id: "ex-treadmill", name: "Laufband", category: "machine", muscleGroup: "cardio", isCustom: false, equipment: "Laufband" },
+  { id: "ex-bike-ergometer", name: "Fahrradergometer", category: "machine", muscleGroup: "cardio", isCustom: false, equipment: "Fahrradergometer" },
+  { id: "ex-elliptical", name: "Crosstrainer", category: "machine", muscleGroup: "cardio", isCustom: false, equipment: "Crosstrainer" },
+  { id: "ex-rowing-machine", name: "Rudermaschine", category: "machine", muscleGroup: "cardio", isCustom: false, equipment: "Rudermaschine" },
+  { id: "ex-stairmaster", name: "Stairmaster", category: "machine", muscleGroup: "cardio", isCustom: false, equipment: "Stairmaster" },
+  { id: "ex-outdoor-running", name: "Laufen (draußen)", category: "other", muscleGroup: "cardio", isCustom: false, equipment: "Körpergewicht" },
+  { id: "ex-cycling-outdoor", name: "Fahrradfahren (draußen)", category: "other", muscleGroup: "cardio", isCustom: false, equipment: "Fahrrad" },
+  { id: "ex-swimming", name: "Schwimmen", category: "other", muscleGroup: "cardio", isCustom: false, equipment: "Schwimmbad" },
+  { id: "ex-jump-rope", name: "Seilspringen", category: "other", muscleGroup: "cardio", isCustom: false, equipment: "Sprungseil" },
 ];

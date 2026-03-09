@@ -32,7 +32,7 @@ import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { formatDuration } from "@/lib/calculations";
 import { detectPRs } from "@/lib/pr-detection";
 import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
-import type { SetTag, RPE, WorkoutExercise, Template } from "@/lib/types";
+import type { SetTag, RPE, WorkoutExercise, Template, CardioData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -587,11 +587,16 @@ export default function WorkoutPage() {
 
   const handleToggleSet = (exerciseInstanceId: string, setId: string) => {
     // Check current state BEFORE toggling
-    const exercise = activeWorkout.exercises.find(e => e.id === exerciseInstanceId);
-    const set = exercise?.sets.find(s => s.id === setId);
+    const workoutExercise = activeWorkout.exercises.find(e => e.id === exerciseInstanceId);
+    const set = workoutExercise?.sets.find(s => s.id === setId);
     const wasCompleted = set?.completed ?? false;
+    const exerciseDef = workoutExercise ? getExercise(workoutExercise.exerciseId) : null;
+    const isCardio = exerciseDef?.muscleGroup === "cardio";
 
     toggleSetComplete(exerciseInstanceId, setId);
+
+    // No rest timer for cardio
+    if (isCardio) return;
 
     // If we just completed the set (was not completed before), start timer
     if (!wasCompleted && settings.restTimerAutoStart) {
@@ -784,22 +789,34 @@ export default function WorkoutPage() {
               )}
 
               {/* Set Table Header */}
-              <div className={cn(
-                "grid gap-1 px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase",
-                previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]"
-              )}>
-                <span className="text-center">Set</span>
-                {previousSets && <span className="text-center">Vorher</span>}
-                <span className="text-center">{settings.weightUnit.toUpperCase()}</span>
-                <span className="text-center">Wdh</span>
-                <span className="text-center">
-                  <Check className="h-3 w-3 mx-auto" />
-                </span>
-              </div>
+              {exercise.muscleGroup === "cardio" ? (
+                <div className="grid grid-cols-[28px_1fr_1fr_1fr_1fr_32px] gap-1 px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase">
+                  <span className="text-center">Set</span>
+                  <span className="text-center">Min</span>
+                  <span className="text-center">km</span>
+                  <span className="text-center">km/h</span>
+                  <span className="text-center">Stg.%</span>
+                  <span className="text-center"><Check className="h-3 w-3 mx-auto" /></span>
+                </div>
+              ) : (
+                <div className={cn(
+                  "grid gap-1 px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase",
+                  previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]"
+                )}>
+                  <span className="text-center">Set</span>
+                  {previousSets && <span className="text-center">Vorher</span>}
+                  <span className="text-center">{settings.weightUnit.toUpperCase()}</span>
+                  <span className="text-center">Wdh</span>
+                  <span className="text-center">
+                    <Check className="h-3 w-3 mx-auto" />
+                  </span>
+                </div>
+              )}
 
               {/* Sets */}
               {we.sets.map((set, setIdx) => {
                 const prevSet = previousSets?.[setIdx];
+                const isCardio = exercise.muscleGroup === "cardio";
                 return (
                   <div key={set.id} className="relative overflow-hidden">
                     {/* Swipe-to-delete background — only rendered while swiping */}
@@ -839,81 +856,130 @@ export default function WorkoutPage() {
                         setSwipedSetId(null);
                       }}
                     >
-                    <div
-                      className={cn(
-                        "grid gap-1 items-center px-3 py-1.5",
-                        previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]",
-                        set.completed && "bg-primary/5",
-                        set.tag === "warmup" && "opacity-70"
-                      )}
-                    >
-                      {/* Set Number / Tag */}
-                      <button
-                        className="flex items-center justify-center"
-                        onClick={() => handleCycleTag(we.id, set.id, set.tag)}
-                      >
-                        {set.tag ? (
-                          <span className={cn("text-[10px] font-bold rounded px-1.5 py-0.5", TAG_LABELS[set.tag].color)}>
-                            {TAG_LABELS[set.tag].label}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-medium text-muted-foreground">{setIdx + 1}</span>
+                    {isCardio ? (
+                      /* ── Cardio Set Row ── */
+                      (() => {
+                        const updateCardio = (field: keyof CardioData, val: string) =>
+                          updateSet(we.id, set.id, {
+                            cardio: {
+                              durationMin: set.cardio?.durationMin ?? null,
+                              distanceKm: set.cardio?.distanceKm ?? null,
+                              speedKmh: set.cardio?.speedKmh ?? null,
+                              incline: set.cardio?.incline ?? null,
+                              calories: set.cardio?.calories ?? null,
+                              [field]: val ? parseFloat(val) : null,
+                            },
+                          });
+                        return (
+                          <div className={cn(
+                            "grid grid-cols-[28px_1fr_1fr_1fr_1fr_32px] gap-1 items-center px-3 py-1.5",
+                            set.completed && "bg-primary/5"
+                          )}>
+                            <span className="text-xs font-medium text-muted-foreground text-center">{setIdx + 1}</span>
+                            <Input type="number" inputMode="decimal" placeholder="-"
+                              value={set.cardio?.durationMin ?? ""}
+                              onChange={e => updateCardio("durationMin", e.target.value)}
+                              className="h-9 text-center text-sm font-medium border-muted/50" />
+                            <Input type="number" inputMode="decimal" placeholder="-"
+                              value={set.cardio?.distanceKm ?? ""}
+                              onChange={e => updateCardio("distanceKm", e.target.value)}
+                              className="h-9 text-center text-sm font-medium border-muted/50" />
+                            <Input type="number" inputMode="decimal" placeholder="-"
+                              value={set.cardio?.speedKmh ?? ""}
+                              onChange={e => updateCardio("speedKmh", e.target.value)}
+                              className="h-9 text-center text-sm font-medium border-muted/50" />
+                            <Input type="number" inputMode="decimal" placeholder="-"
+                              value={set.cardio?.incline ?? ""}
+                              onChange={e => updateCardio("incline", e.target.value)}
+                              className="h-9 text-center text-sm font-medium border-muted/50" />
+                            <div className="flex justify-center">
+                              <Checkbox
+                                checked={set.completed}
+                                onCheckedChange={() => toggleSetComplete(we.id, set.id)}
+                                className="h-6 w-6 rounded-md"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      /* ── Strength Set Row ── */
+                      <div
+                        className={cn(
+                          "grid gap-1 items-center px-3 py-1.5",
+                          previousSets ? "grid-cols-[32px_1fr_1fr_1fr_36px]" : "grid-cols-[32px_1fr_1fr_36px]",
+                          set.completed && "bg-primary/5",
+                          set.tag === "warmup" && "opacity-70"
                         )}
-                      </button>
-
-                      {/* Previous values */}
-                      {previousSets && (
-                        <div className="text-center">
-                          {prevSet ? (
-                            <span className="text-[11px] text-muted-foreground">
-                              {prevSet.weight ?? "-"}×{prevSet.reps ?? "-"}
+                      >
+                        {/* Set Number / Tag */}
+                        <button
+                          className="flex items-center justify-center"
+                          onClick={() => handleCycleTag(we.id, set.id, set.tag)}
+                        >
+                          {set.tag ? (
+                            <span className={cn("text-[10px] font-bold rounded px-1.5 py-0.5", TAG_LABELS[set.tag].color)}>
+                              {TAG_LABELS[set.tag].label}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-muted-foreground/40">-</span>
+                            <span className="text-xs font-medium text-muted-foreground">{setIdx + 1}</span>
                           )}
-                        </div>
-                      )}
+                        </button>
 
-                      {/* Weight */}
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        placeholder={prevSet?.weight?.toString() ?? "-"}
-                        value={set.weight ?? ""}
-                        onChange={e =>
-                          updateSet(we.id, set.id, {
-                            weight: e.target.value ? parseFloat(e.target.value) : null,
-                          })
-                        }
-                        className="h-9 text-center text-sm font-medium border-muted/50"
-                      />
+                        {/* Previous values */}
+                        {previousSets && (
+                          <div className="text-center">
+                            {prevSet ? (
+                              <span className="text-[11px] text-muted-foreground">
+                                {prevSet.weight ?? "-"}×{prevSet.reps ?? "-"}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/40">-</span>
+                            )}
+                          </div>
+                        )}
 
-                      {/* Reps */}
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        placeholder={prevSet?.reps?.toString() ?? "-"}
-                        value={set.reps ?? ""}
-                        onChange={e =>
-                          updateSet(we.id, set.id, {
-                            reps: e.target.value ? parseInt(e.target.value) : null,
-                          })
-                        }
-                        className="h-9 text-center text-sm font-medium border-muted/50"
-                      />
-
-                      {/* Complete Checkbox */}
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={set.completed}
-                          onCheckedChange={() => handleToggleSet(we.id, set.id)}
-                          className="h-6 w-6 rounded-md"
+                        {/* Weight */}
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder={prevSet?.weight?.toString() ?? "-"}
+                          value={set.weight ?? ""}
+                          onChange={e =>
+                            updateSet(we.id, set.id, {
+                              weight: e.target.value ? parseFloat(e.target.value) : null,
+                            })
+                          }
+                          className="h-9 text-center text-sm font-medium border-muted/50"
                         />
-                      </div>
-                    </div>
 
-                    {/* RPE row */}
-                    {set.rpe && (
+                        {/* Reps */}
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder={prevSet?.reps?.toString() ?? "-"}
+                          value={set.reps ?? ""}
+                          onChange={e =>
+                            updateSet(we.id, set.id, {
+                              reps: e.target.value ? parseInt(e.target.value) : null,
+                            })
+                          }
+                          className="h-9 text-center text-sm font-medium border-muted/50"
+                        />
+
+                        {/* Complete Checkbox */}
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={set.completed}
+                            onCheckedChange={() => handleToggleSet(we.id, set.id)}
+                            className="h-6 w-6 rounded-md"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* RPE row (only for strength) */}
+                    {!isCardio && set.rpe && (
                       <div className="flex justify-end px-3 pb-1">
                         <Badge variant="outline" className="text-[10px] h-5">
                           RPE {set.rpe}
@@ -921,8 +987,8 @@ export default function WorkoutPage() {
                       </div>
                     )}
 
-                    {/* Inline Rest Timer — appears after the set that triggered it */}
-                    {activeExerciseId === we.id && activeSetId === set.id && (isRunning || timeRemaining > 0) && (
+                    {/* Inline Rest Timer — only for strength */}
+                    {!isCardio && activeExerciseId === we.id && activeSetId === set.id && (isRunning || timeRemaining > 0) && (
                       <div className="mx-3 my-1.5 rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">

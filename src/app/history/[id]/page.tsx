@@ -123,33 +123,47 @@ export default function WorkoutDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-xs text-muted-foreground italic mb-1">{we.notes}</p>
                 )}
                 <div className="space-y-0.5">
-                  {we.sets.map((set, i) => (
-                    <div
-                      key={set.id}
-                      className="flex items-center gap-2 text-sm py-0.5"
-                    >
-                      <span className="text-muted-foreground w-5 text-right text-xs">
-                        {i + 1}
-                      </span>
-                      {set.completed ? (
-                        <span className="font-medium">
-                          {set.weight ?? 0} kg × {set.reps ?? 0}
+                  {we.sets.map((set, i) => {
+                    const isCardio = exercise.muscleGroup === "cardio";
+                    return (
+                      <div
+                        key={set.id}
+                        className="flex items-center gap-2 text-sm py-0.5"
+                      >
+                        <span className="text-muted-foreground w-5 text-right text-xs">
+                          {i + 1}
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">Nicht abgeschlossen</span>
-                      )}
-                      {set.tag && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1">
-                          {set.tag === "warmup" ? "W" : set.tag === "dropset" ? "D" : "F"}
-                        </Badge>
-                      )}
-                      {set.rpe && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1">
-                          RPE {set.rpe}
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                        {set.completed ? (
+                          isCardio && set.cardio ? (
+                            <span className="font-medium text-xs">
+                              {[
+                                set.cardio.durationMin != null && `${set.cardio.durationMin} min`,
+                                set.cardio.distanceKm != null && `${set.cardio.distanceKm} km`,
+                                set.cardio.speedKmh != null && `${set.cardio.speedKmh} km/h`,
+                                set.cardio.incline != null && `${set.cardio.incline}% Stg.`,
+                              ].filter(Boolean).join(" · ")}
+                            </span>
+                          ) : (
+                            <span className="font-medium">
+                              {set.weight ?? 0} kg × {set.reps ?? 0}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground">Nicht abgeschlossen</span>
+                        )}
+                        {set.tag && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1">
+                            {set.tag === "warmup" ? "W" : set.tag === "dropset" ? "D" : "F"}
+                          </Badge>
+                        )}
+                        {set.rpe && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1">
+                            RPE {set.rpe}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Vol: {exerciseVolume(we.sets).toLocaleString("de-DE")} kg
