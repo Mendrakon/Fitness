@@ -103,7 +103,7 @@ export interface BodyMeasurement {
   calories: number | null;
 }
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark" | "system" | "gym-dark";
 
 export type AccentColor = "blue" | "purple" | "green" | "orange" | "red" | "pink";
 
@@ -117,6 +117,7 @@ export interface AppSettings {
   showPreviousValues: boolean;
   theme: ThemeMode;
   accentColor: AccentColor;
+  accentStrength: number;
   prThresholdWeight: number;
   prThresholdReps: number;
   prThresholdVolumePercent: number;

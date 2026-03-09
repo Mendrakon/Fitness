@@ -135,6 +135,84 @@
 .accent-pink         { --primary: oklch(0.56 0.22 330); --ring: oklch(0.56 0.22 330); --sidebar-primary: oklch(0.56 0.22 330); --sidebar-ring: oklch(0.56 0.22 330); }
 .dark.accent-pink    { --primary: oklch(0.64 0.22 330); --ring: oklch(0.64 0.22 330); --sidebar-primary: oklch(0.64 0.22 330); --sidebar-ring: oklch(0.64 0.22 330); }
 
+/* ── Gym Dark theme ───────────────────────────────────────────────────── */
+
+.gym-dark {
+  --background: oklch(0.04 0.01 250);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.08 0.015 250);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.08 0.015 250);
+  --popover-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.65 0.22 260);
+  --primary-foreground: oklch(0.04 0.01 250);
+  --secondary: oklch(0.12 0.02 250);
+  --secondary-foreground: oklch(0.90 0.01 250);
+  --muted: oklch(0.12 0.02 250);
+  --muted-foreground: oklch(0.58 0.03 250);
+  --accent: oklch(0.14 0.03 260);
+  --accent-foreground: oklch(0.96 0.01 250);
+  --destructive: oklch(0.70 0.22 25);
+  --border: oklch(0.18 0.025 250);
+  --input: oklch(0.14 0.02 250);
+  --ring: oklch(0.65 0.22 260);
+  --sidebar: oklch(0.06 0.012 250);
+  --sidebar-foreground: oklch(0.96 0.01 250);
+  --sidebar-primary: oklch(0.65 0.22 260);
+  --sidebar-primary-foreground: oklch(0.04 0.01 250);
+  --sidebar-accent: oklch(0.14 0.03 260);
+  --sidebar-accent-foreground: oklch(0.96 0.01 250);
+  --sidebar-border: oklch(0.18 0.025 250);
+  --sidebar-ring: oklch(0.65 0.22 260);
+  /* Glow values (used in rules below) */
+  --glow-color: oklch(0.65 0.22 260);
+  --glow-sm: 0 0 8px oklch(0.65 0.22 260 / 0.55);
+  --glow-md: 0 0 16px oklch(0.65 0.22 260 / 0.50), 0 0 32px oklch(0.65 0.22 260 / 0.25);
+  --glow-lg: 0 0 24px oklch(0.65 0.22 260 / 0.60), 0 0 48px oklch(0.65 0.22 260 / 0.30);
+}
+
+/* Gym Dark accent overrides — boost glow hue per accent color */
+.gym-dark.accent-purple  { --primary: oklch(0.68 0.24 295); --ring: oklch(0.68 0.24 295); --glow-color: oklch(0.68 0.24 295); --glow-sm: 0 0 8px oklch(0.68 0.24 295 / 0.55); --glow-md: 0 0 16px oklch(0.68 0.24 295 / 0.50), 0 0 32px oklch(0.68 0.24 295 / 0.25); --glow-lg: 0 0 24px oklch(0.68 0.24 295 / 0.60), 0 0 48px oklch(0.68 0.24 295 / 0.30); }
+.gym-dark.accent-green   { --primary: oklch(0.68 0.22 145); --ring: oklch(0.68 0.22 145); --glow-color: oklch(0.68 0.22 145); --glow-sm: 0 0 8px oklch(0.68 0.22 145 / 0.55); --glow-md: 0 0 16px oklch(0.68 0.22 145 / 0.50), 0 0 32px oklch(0.68 0.22 145 / 0.25); --glow-lg: 0 0 24px oklch(0.68 0.22 145 / 0.60), 0 0 48px oklch(0.68 0.22 145 / 0.30); }
+.gym-dark.accent-orange  { --primary: oklch(0.72 0.22 55);  --ring: oklch(0.72 0.22 55);  --glow-color: oklch(0.72 0.22 55);  --glow-sm: 0 0 8px oklch(0.72 0.22 55 / 0.55);  --glow-md: 0 0 16px oklch(0.72 0.22 55 / 0.50),  0 0 32px oklch(0.72 0.22 55 / 0.25);  --glow-lg: 0 0 24px oklch(0.72 0.22 55 / 0.60),  0 0 48px oklch(0.72 0.22 55 / 0.30); }
+.gym-dark.accent-red     { --primary: oklch(0.68 0.25 25);  --ring: oklch(0.68 0.25 25);  --glow-color: oklch(0.68 0.25 25);  --glow-sm: 0 0 8px oklch(0.68 0.25 25 / 0.55);  --glow-md: 0 0 16px oklch(0.68 0.25 25 / 0.50),  0 0 32px oklch(0.68 0.25 25 / 0.25);  --glow-lg: 0 0 24px oklch(0.68 0.25 25 / 0.60),  0 0 48px oklch(0.68 0.25 25 / 0.30); }
+.gym-dark.accent-pink    { --primary: oklch(0.68 0.25 330); --ring: oklch(0.68 0.25 330); --glow-color: oklch(0.68 0.25 330); --glow-sm: 0 0 8px oklch(0.68 0.25 330 / 0.55); --glow-md: 0 0 16px oklch(0.68 0.25 330 / 0.50), 0 0 32px oklch(0.68 0.25 330 / 0.25); --glow-lg: 0 0 24px oklch(0.68 0.25 330 / 0.60), 0 0 48px oklch(0.68 0.25 330 / 0.30); }
+
+/* Glow on primary buttons */
+.gym-dark button[class*="bg-primary"],
+.gym-dark [class*="bg-primary"] {
+  box-shadow: var(--glow-sm);
+  transition: box-shadow 0.2s ease;
+}
+.gym-dark button[class*="bg-primary"]:hover,
+.gym-dark button[class*="bg-primary"]:active {
+  box-shadow: var(--glow-md);
+}
+
+/* Glow on active bottom nav icon */
+.gym-dark .bottom-nav [data-active="true"],
+.gym-dark [aria-selected="true"],
+.gym-dark [data-state="active"] {
+  filter: drop-shadow(0 0 6px var(--glow-color));
+}
+
+/* Glow on focused inputs */
+.gym-dark input:focus,
+.gym-dark textarea:focus,
+.gym-dark [data-state="checked"] {
+  box-shadow: var(--glow-sm);
+}
+
+/* Card subtle inner highlight */
+.gym-dark [class*="rounded"][class*="border"] {
+  border-color: oklch(0.22 0.03 250);
+}
+
+/* PR badge / highlight glow */
+.gym-dark .text-primary {
+  text-shadow: 0 0 8px var(--glow-color);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

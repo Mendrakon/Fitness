@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Dumbbell, Clock, Sun, Moon, Monitor, LogOut, User, Pencil, Check, X, Camera } from "lucide-react";
+import { Dumbbell, Clock, Sun, Moon, Monitor, LogOut, User, Pencil, Check, X, Camera, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
@@ -363,6 +364,24 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="flex items-center justify-between">
+              <div>
+                <Label>Gym Dark</Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Tiefschwarz mit Neon-Glow</p>
+              </div>
+              <button
+                onClick={() => update({ theme: settings.theme === "gym-dark" ? "dark" : "gym-dark" })}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                  settings.theme === "gym-dark"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-accent"
+                }`}
+                style={settings.theme === "gym-dark" ? { boxShadow: "0 0 12px var(--primary)" } : undefined}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {settings.theme === "gym-dark" ? "Aktiv" : "Aktivieren"}
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
               <Label>Farbe</Label>
               <div className="flex items-center gap-2">
                 {([
@@ -381,6 +400,26 @@ export default function SettingsPage() {
                     aria-label={value}
                   />
                 ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Akzent-Stärke</Label>
+                <span className="text-xs text-muted-foreground w-8 text-right">
+                  {settings.accentStrength ?? 100}%
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground">Mono</span>
+                <Slider
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[settings.accentStrength ?? 100]}
+                  onValueChange={([v]) => update({ accentStrength: v })}
+                  className="flex-1"
+                />
+                <span className="text-[10px] text-muted-foreground">Kräftig</span>
               </div>
             </div>
             <div className="flex items-center justify-between">

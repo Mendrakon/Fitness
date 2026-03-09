@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   showPreviousValues: true,
   theme: "system",
   accentColor: "blue",
+  accentStrength: 100,
   prThresholdWeight: 2.5,
   prThresholdReps: 1,
   prThresholdVolumePercent: 5,
