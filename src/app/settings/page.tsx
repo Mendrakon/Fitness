@@ -309,6 +309,13 @@ export default function SettingsPage() {
                 onCheckedChange={v => update({ restTimerSound: v })}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <Label>Benachrichtigung bei Timer-Ende</Label>
+              <Switch
+                checked={settings.restTimerNotification}
+                onCheckedChange={v => update({ restTimerNotification: v })}
+              />
+            </div>
           </CardContent>
         </Card>
 

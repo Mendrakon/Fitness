@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultRestTimerWarmup: 90,
   restTimerSound: true,
   restTimerAutoStart: true,
+  restTimerNotification: true,
   showPreviousValues: true,
   theme: "system",
   accentColor: "blue",

@@ -53,7 +53,7 @@ export function NotificationPrompt() {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">Benachrichtigungen aktivieren</p>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            Erhalte eine Meldung wenn du eine Freundschaftsanfrage bekommst – auch wenn die App geschlossen ist.
+            Erhalte eine Meldung wenn deine Pause vorbei ist oder du eine Freundschaftsanfrage bekommst – auch wenn du gerade in einer anderen App bist.
           </p>
           <div className="flex gap-2 mt-3">
             <Button size="sm" className="h-8 text-xs" onClick={handleAllow}>

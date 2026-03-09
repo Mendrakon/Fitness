@@ -49,6 +49,23 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     setIsRunning(false);
     endTimeRef.current = null;
     try { audioRef.current?.play(); } catch {}
+
+    // Push-Notification wenn der Tab nicht aktiv ist und die Einstellung aktiviert ist
+    if (typeof window !== "undefined" && document.hidden) {
+      try {
+        const stored = localStorage.getItem("fitness-settings");
+        const notifEnabled = stored ? JSON.parse(stored)?.restTimerNotification !== false : true;
+        if (notifEnabled && Notification.permission === "granted") {
+          new Notification("Pause vorbei!", {
+            body: "Du kannst jetzt mit dem nächsten Satz weitermachen.",
+            icon: "/icons/icon-192x192.png",
+            badge: "/icons/icon-192x192.png",
+            tag: "rest-timer",
+            renotify: true,
+          });
+        }
+      } catch {}
+    }
   }, [clearTimer]);
 
   const startTimer = useCallback(

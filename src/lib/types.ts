@@ -104,6 +104,7 @@ export interface AppSettings {
   defaultRestTimerWarmup: number;
   restTimerSound: boolean;
   restTimerAutoStart: boolean;
+  restTimerNotification: boolean;
   showPreviousValues: boolean;
   theme: ThemeMode;
   accentColor: AccentColor;
