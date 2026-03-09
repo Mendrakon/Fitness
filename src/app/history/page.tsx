@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { MuscleHeatmap } from "@/components/muscle-heatmap";
 import { useWorkouts } from "@/hooks/use-workouts";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useExercises } from "@/hooks/use-exercises";
 import { formatDurationFromDates } from "@/lib/calculations";
 import { format } from "date-fns";
@@ -14,7 +15,7 @@ import { de } from "date-fns/locale";
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { workouts } = useWorkouts();
+  const { workouts, loading } = useWorkouts();
   const { getById: getExercise } = useExercises();
 
   const completedWorkouts = workouts.filter(w => w.endTime);
@@ -34,6 +35,31 @@ export default function HistoryPage() {
     });
     return map;
   }, [completedWorkouts]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-0">
+        <PageHeader title="Verlauf" />
+        <div className="px-4 py-3 space-y-4">
+          {/* Heatmap skeleton */}
+          <Skeleton className="h-48 w-full rounded-xl" />
+          {/* Month group skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-20" />
+            {[0, 1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            {[0, 1].map(i => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-0">

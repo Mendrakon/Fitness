@@ -17,11 +17,12 @@ import { formatPRDiff } from "@/lib/types";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
   const router = useRouter();
   const { activeWorkout } = useActiveWorkout();
-  const { workouts } = useWorkouts();
+  const { workouts, loading } = useWorkouts();
   const { templates } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
@@ -52,6 +53,46 @@ export default function HomePage() {
   const workoutsThisWeek = completedWorkouts.filter(
     w => new Date(w.startTime) >= weekStart
   ).length;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold">FitTrack</h1>
+          <p className="text-sm text-muted-foreground">
+            {format(now, "EEEE, d. MMMM", { locale: de })}
+          </p>
+        </div>
+        {/* Quick Start skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-11 w-full" />
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map(i => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        {/* PRs skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          {[0, 1, 2].map(i => (
+            <Skeleton key={i} className="h-14 rounded-xl" />
+          ))}
+        </div>
+        {/* Recent workouts skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          {[0, 1, 2].map(i => (
+            <Skeleton key={i} className="h-14 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
