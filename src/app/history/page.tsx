@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Dumbbell, ChevronRight, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
+import { MuscleHeatmap } from "@/components/muscle-heatmap";
 import { useWorkouts } from "@/hooks/use-workouts";
 import { useExercises } from "@/hooks/use-exercises";
 import { formatDurationFromDates } from "@/lib/calculations";
@@ -17,6 +18,11 @@ export default function HistoryPage() {
   const { getById: getExercise } = useExercises();
 
   const completedWorkouts = workouts.filter(w => w.endTime);
+
+  const getMuscleGroup = useCallback(
+    (exerciseId: string) => getExercise(exerciseId)?.muscleGroup,
+    [getExercise]
+  );
 
   const grouped = useMemo(() => {
     const map = new Map<string, typeof completedWorkouts>();
@@ -34,6 +40,11 @@ export default function HistoryPage() {
       <PageHeader title="Verlauf" />
 
       <div className="px-4 py-3">
+        <MuscleHeatmap
+          workouts={completedWorkouts}
+          getMuscleGroup={getMuscleGroup}
+        />
+
         {completedWorkouts.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <Clock className="h-8 w-8 text-muted-foreground mb-2" />
