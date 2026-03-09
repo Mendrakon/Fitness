@@ -43,31 +43,30 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const sendSwMessage = useCallback((msg: object) => {
+    try {
+      navigator.serviceWorker?.controller?.postMessage(msg);
+    } catch {}
+  }, []);
+
+  const isNotificationEnabled = useCallback(() => {
+    try {
+      const stored = localStorage.getItem("fitness-settings");
+      return stored ? JSON.parse(stored)?.restTimerNotification !== false : true;
+    } catch {
+      return true;
+    }
+  }, []);
+
   const finishTimer = useCallback(() => {
     clearTimer();
     isRunningRef.current = false;
     setIsRunning(false);
     endTimeRef.current = null;
     try { audioRef.current?.play(); } catch {}
-
-    // Push-Notification wenn der Tab nicht aktiv ist und die Einstellung aktiviert ist
-    if (typeof window !== "undefined" && document.hidden) {
-      try {
-        const stored = localStorage.getItem("fitness-settings");
-        const notifEnabled = stored ? JSON.parse(stored)?.restTimerNotification !== false : true;
-        if (notifEnabled && Notification.permission === "granted") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          new Notification("Pause vorbei!", {
-            body: "Du kannst jetzt mit dem nächsten Satz weitermachen.",
-            icon: "/icons/icon-192x192.png",
-            badge: "/icons/icon-192x192.png",
-            tag: "rest-timer",
-            renotify: true,
-          } as any);
-        }
-      } catch {}
-    }
-  }, [clearTimer]);
+    // SW-Timeout abbrechen – der SW hat die Notification bereits selbst gezeigt
+    sendSwMessage({ type: "CANCEL_TIMER_NOTIFICATION" });
+  }, [clearTimer, sendSwMessage]);
 
   const startTimer = useCallback(
     (seconds: number, exerciseInstanceId?: string, setId?: string) => {
@@ -88,8 +87,13 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         setTimeRemaining(remaining);
         if (remaining <= 0) finishTimer();
       }, 500); // 500ms damit Rücksprung nach Screen-on schnell ankommt
+
+      // Service Worker über den Timer informieren für Hintergrund-Notifications
+      if (isNotificationEnabled() && Notification.permission === "granted") {
+        sendSwMessage({ type: "SCHEDULE_TIMER_NOTIFICATION", endTime });
+      }
     },
-    [clearTimer, finishTimer]
+    [clearTimer, finishTimer, isNotificationEnabled, sendSwMessage]
   );
 
   const skipTimer = useCallback(() => {
@@ -99,17 +103,22 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     setTimeRemaining(0);
     setIsRunning(false);
     setVisible(false);
+    sendSwMessage({ type: "CANCEL_TIMER_NOTIFICATION" });
     setActiveExerciseId(null);
     setActiveSetId(null);
-  }, [clearTimer]);
+  }, [clearTimer, sendSwMessage]);
 
   const addTime = useCallback((seconds: number) => {
     if (endTimeRef.current) {
       endTimeRef.current += seconds * 1000;
+      // SW-Notification neu planen
+      if (isNotificationEnabled() && Notification.permission === "granted") {
+        sendSwMessage({ type: "SCHEDULE_TIMER_NOTIFICATION", endTime: endTimeRef.current });
+      }
     }
     setTimeRemaining(prev => Math.max(0, prev + seconds));
     setTotalDuration(prev => Math.max(0, prev + seconds));
-  }, []);
+  }, [isNotificationEnabled, sendSwMessage]);
 
   // Sofort korrigieren wenn Screen wieder eingeschaltet wird
   useEffect(() => {
