@@ -279,8 +279,15 @@ export default function SettingsPage() {
               <Input
                 type="number"
                 inputMode="numeric"
-                value={settings.defaultRestTimerWork}
-                onChange={e => update({ defaultRestTimerWork: parseInt(e.target.value) || 120 })}
+                value={settings.defaultRestTimerWork === 0 ? "" : settings.defaultRestTimerWork}
+                onChange={e => {
+                  const v = parseInt(e.target.value);
+                  update({ defaultRestTimerWork: isNaN(v) ? 0 : v });
+                }}
+                onBlur={e => {
+                  const v = parseInt(e.target.value);
+                  if (isNaN(v) || v <= 0) update({ defaultRestTimerWork: 120 });
+                }}
                 className="w-20 text-center"
               />
             </div>
@@ -289,8 +296,15 @@ export default function SettingsPage() {
               <Input
                 type="number"
                 inputMode="numeric"
-                value={settings.defaultRestTimerWarmup}
-                onChange={e => update({ defaultRestTimerWarmup: parseInt(e.target.value) || 90 })}
+                value={settings.defaultRestTimerWarmup === 0 ? "" : settings.defaultRestTimerWarmup}
+                onChange={e => {
+                  const v = parseInt(e.target.value);
+                  update({ defaultRestTimerWarmup: isNaN(v) ? 0 : v });
+                }}
+                onBlur={e => {
+                  const v = parseInt(e.target.value);
+                  if (isNaN(v) || v <= 0) update({ defaultRestTimerWarmup: 90 });
+                }}
                 className="w-20 text-center"
               />
             </div>
