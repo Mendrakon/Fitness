@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 interface TimerContextValue {
   timeRemaining: number;
@@ -25,16 +25,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Timestamp wann der Timer ablaufen soll – bleibt korrekt auch wenn Screen aus ist
+  // Keep the timer accurate even if the screen turns off or the tab is hidden.
   const endTimeRef = useRef<number | null>(null);
   const isRunningRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      audioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeYl5GKgXVram2Dj5ecoZ+akIV5bmpviJObo6ShnpWJfXFrbYSQm6OmpKGbkYZ6bmtti5WdpKainpSIe29tbImTnKOlop6Uh3pvbW6Kk5yjpKKelId6b21uipOco6SinpSHem9tboqTnKOkop6Uh3pvbW6Kk5yj");
-    }
-  }, []);
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -63,8 +56,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     isRunningRef.current = false;
     setIsRunning(false);
     endTimeRef.current = null;
-    try { audioRef.current?.play(); } catch {}
-    // SW-Timeout abbrechen – der SW hat die Notification bereits selbst gezeigt
+    // The service worker already handled the background notification if needed.
     sendSwMessage({ type: "CANCEL_TIMER_NOTIFICATION" });
   }, [clearTimer, sendSwMessage]);
 
@@ -86,9 +78,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
         setTimeRemaining(remaining);
         if (remaining <= 0) finishTimer();
-      }, 500); // 500ms damit Rücksprung nach Screen-on schnell ankommt
+      }, 500);
 
-      // Service Worker über den Timer informieren für Hintergrund-Notifications
       if (isNotificationEnabled() && Notification.permission === "granted") {
         sendSwMessage({ type: "SCHEDULE_TIMER_NOTIFICATION", endTime });
       }
@@ -111,23 +102,24 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const addTime = useCallback((seconds: number) => {
     if (endTimeRef.current) {
       endTimeRef.current += seconds * 1000;
-      // SW-Notification neu planen
       if (isNotificationEnabled() && Notification.permission === "granted") {
         sendSwMessage({ type: "SCHEDULE_TIMER_NOTIFICATION", endTime: endTimeRef.current });
       }
     }
+
     setTimeRemaining(prev => Math.max(0, prev + seconds));
     setTotalDuration(prev => Math.max(0, prev + seconds));
   }, [isNotificationEnabled, sendSwMessage]);
 
-  // Sofort korrigieren wenn Screen wieder eingeschaltet wird
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden || !isRunningRef.current || !endTimeRef.current) return;
+
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
       setTimeRemaining(remaining);
       if (remaining <= 0) finishTimer();
     };
+
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);

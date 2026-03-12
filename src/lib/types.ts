@@ -111,7 +111,6 @@ export interface AppSettings {
   weightUnit: WeightUnit;
   defaultRestTimerWork: number;
   defaultRestTimerWarmup: number;
-  restTimerSound: boolean;
   restTimerAutoStart: boolean;
   restTimerNotification: boolean;
   showPreviousValues: boolean;

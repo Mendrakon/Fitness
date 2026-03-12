@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useLocalStorage } from "./use-local-storage";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase";
@@ -10,7 +10,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   weightUnit: "kg",
   defaultRestTimerWork: 120,
   defaultRestTimerWarmup: 90,
-  restTimerSound: true,
   restTimerAutoStart: true,
   restTimerNotification: true,
   showPreviousValues: true,
@@ -23,6 +22,24 @@ const DEFAULT_SETTINGS: AppSettings = {
   prThreshold1RMPercent: 2,
 };
 
+function normalizeSettings(settings?: Partial<AppSettings> | null): AppSettings {
+  return {
+    weightUnit: settings?.weightUnit ?? DEFAULT_SETTINGS.weightUnit,
+    defaultRestTimerWork: settings?.defaultRestTimerWork ?? DEFAULT_SETTINGS.defaultRestTimerWork,
+    defaultRestTimerWarmup: settings?.defaultRestTimerWarmup ?? DEFAULT_SETTINGS.defaultRestTimerWarmup,
+    restTimerAutoStart: settings?.restTimerAutoStart ?? DEFAULT_SETTINGS.restTimerAutoStart,
+    restTimerNotification: settings?.restTimerNotification ?? DEFAULT_SETTINGS.restTimerNotification,
+    showPreviousValues: settings?.showPreviousValues ?? DEFAULT_SETTINGS.showPreviousValues,
+    theme: settings?.theme ?? DEFAULT_SETTINGS.theme,
+    accentColor: settings?.accentColor ?? DEFAULT_SETTINGS.accentColor,
+    accentStrength: settings?.accentStrength ?? DEFAULT_SETTINGS.accentStrength,
+    prThresholdWeight: settings?.prThresholdWeight ?? DEFAULT_SETTINGS.prThresholdWeight,
+    prThresholdReps: settings?.prThresholdReps ?? DEFAULT_SETTINGS.prThresholdReps,
+    prThresholdVolumePercent: settings?.prThresholdVolumePercent ?? DEFAULT_SETTINGS.prThresholdVolumePercent,
+    prThreshold1RMPercent: settings?.prThreshold1RMPercent ?? DEFAULT_SETTINGS.prThreshold1RMPercent,
+  };
+}
+
 async function syncSettingsToDB(settings: AppSettings) {
   try {
     const supabase = createClient();
@@ -30,7 +47,7 @@ async function syncSettingsToDB(settings: AppSettings) {
     if (!user) return;
     await supabase.from("profiles").update({ settings }).eq("id", user.id);
   } catch {
-    // silently fail – settings are still saved locally
+    // Settings remain available locally if sync fails.
   }
 }
 
@@ -40,42 +57,42 @@ export function useSettings() {
     DEFAULT_SETTINGS
   );
 
-  // Always merge with defaults so new fields are never undefined
   const settings = useMemo(
-    () => ({ ...DEFAULT_SETTINGS, ...stored }),
+    () => normalizeSettings(stored),
     [stored]
   );
 
-  // On mount: load settings from DB and merge (DB takes priority over local)
   useEffect(() => {
     const loadFromDB = async () => {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
         const { data } = await supabase
           .from("profiles")
           .select("settings")
           .eq("id", user.id)
           .single();
+
         if (data?.settings) {
-          setSettings(prev => ({
-            ...DEFAULT_SETTINGS,
+          setSettings(prev => normalizeSettings({
             ...prev,
             ...(data.settings as Partial<AppSettings>),
           }));
         }
       } catch {
-        // silently fail – use local settings
+        // Fall back to local settings.
       }
     };
+
     loadFromDB();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setSettings]);
 
   const update = useCallback(
     (updates: Partial<AppSettings>) => {
       setSettings(prev => {
-        const next = { ...DEFAULT_SETTINGS, ...prev, ...updates };
+        const next = normalizeSettings({ ...prev, ...updates });
         syncSettingsToDB(next);
         return next;
       });

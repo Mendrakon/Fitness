@@ -318,13 +318,6 @@ export default function SettingsPage() {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Sound bei Timer-Ende</Label>
-              <Switch
-                checked={settings.restTimerSound}
-                onCheckedChange={v => update({ restTimerSound: v })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
               <Label>Benachrichtigung bei Timer-Ende</Label>
               <Switch
                 checked={settings.restTimerNotification}
