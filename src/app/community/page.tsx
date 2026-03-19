@@ -7,7 +7,7 @@ import { de } from "date-fns/locale";
 import { v4 as uuid } from "uuid";
 import {
   Heart, MessageCircle, Trophy, Dumbbell, RefreshCw, ChevronDown, ChevronUp, Send,
-  LayoutTemplate, Check, MoreVertical, Trash2,
+  LayoutTemplate, Check, MoreVertical, Trash2, Mountain,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +34,7 @@ import {
   type FeedEvent,
   type FeedFilter,
   type WorkoutPayload,
+  type KlettersteigPayload,
   type PRSummary,
   type FeedComment,
   type CurrentUserProfile,
@@ -42,8 +43,8 @@ import {
 } from "@/hooks/use-activity-feed";
 import { useTemplates } from "@/hooks/use-templates";
 import { useExercises } from "@/hooks/use-exercises";
-import { PR_METRIC_LABELS } from "@/lib/types";
-import type { Exercise, Template } from "@/lib/types";
+import { PR_METRIC_LABELS, KLETTERSTEIG_PR_METRIC_LABELS, KLETTERSTEIG_DIFFICULTY_COLORS, WEATHER_ICONS, formatKlettersteigTime } from "@/lib/types";
+import type { Exercise, Template, KlettersteigDifficulty } from "@/lib/types";
 import { toast } from "sonner";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
@@ -219,6 +220,67 @@ function TemplateShareContent({
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Klettersteig card content ─────────────────────────────────────────────
+
+function KlettersteigContent({ payload }: { payload: KlettersteigPayload }) {
+  const [showPRs, setShowPRs] = useState(false);
+  const prs = Array.isArray(payload.prs) ? payload.prs : [];
+  const hasPRs = prs.length > 0;
+  const difficulty = payload.routeDifficulty as KlettersteigDifficulty;
+
+  return (
+    <div className="mt-2 rounded-xl border border-border bg-muted/40 overflow-hidden">
+      <div className="flex items-center gap-2 p-3">
+        <div
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-lg text-white font-bold text-xs shrink-0",
+            KLETTERSTEIG_DIFFICULTY_COLORS[difficulty] ?? "bg-muted"
+          )}
+        >
+          {difficulty}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate">{payload.routeName}</p>
+          <p className="text-xs text-muted-foreground">
+            {payload.locationName}
+            {" · "}{formatKlettersteigTime(payload.durationSeconds)}
+            {payload.extraWeightKg > 0 && ` · ${payload.extraWeightKg} kg`}
+            {payload.weather?.condition && ` · ${WEATHER_ICONS[payload.weather.condition as keyof typeof WEATHER_ICONS] ?? ""}`}
+          </p>
+        </div>
+        {hasPRs && (
+          <button
+            onClick={() => setShowPRs((v) => !v)}
+            className="flex items-center gap-1 shrink-0 rounded-lg bg-yellow-500/10 px-3 min-h-[44px] text-yellow-700 hover:bg-yellow-500/20 active:bg-yellow-500/30 transition-colors"
+          >
+            <Trophy className="h-3 w-3" />
+            <span className="text-xs font-semibold">{prs.length} PR{prs.length > 1 ? "s" : ""}</span>
+            {showPRs ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        )}
+      </div>
+      {hasPRs && showPRs && (
+        <div className="border-t border-border/60 px-3 pb-2 divide-y divide-border/40">
+          {prs.map((pr, i) => {
+            const label = KLETTERSTEIG_PR_METRIC_LABELS[pr.metric as keyof typeof KLETTERSTEIG_PR_METRIC_LABELS] ?? pr.metric;
+            return (
+              <div key={i} className="flex items-center gap-2 py-2">
+                <Trophy className="h-3.5 w-3.5 shrink-0 text-yellow-500" />
+                <span className="text-xs font-medium flex-1">{label}</span>
+                <span className="text-xs font-bold text-yellow-600 shrink-0">
+                  {pr.metric === "max_weight"
+                    ? `${pr.newValue} kg`
+                    : formatKlettersteigTime(pr.newValue)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -421,7 +483,9 @@ function FeedCard({
   const subtitle =
     event.type === "template_share"
       ? "hat eine Vorlage geteilt"
-      : "hat ein Workout abgeschlossen";
+      : event.type === "klettersteig_complete"
+        ? "hat einen Klettersteig abgeschlossen"
+        : "hat ein Workout abgeschlossen";
   const isOwnEvent = event.userId === currentUserProfile?.userId;
 
   const handleDeleteEvent = async () => {
@@ -481,7 +545,7 @@ function FeedCard({
         </div>
       </div>
 
-      {/* Content — workout or template */}
+      {/* Content — workout, template, or klettersteig */}
       {event.type === "template_share" ? (
         <TemplateShareContent
           payload={event.payload as TemplateSharePayload}
@@ -490,6 +554,8 @@ function FeedCard({
           isOwnEvent={isOwnEvent}
           onSave={onSaveTemplate}
         />
+      ) : event.type === "klettersteig_complete" ? (
+        <KlettersteigContent payload={event.payload as KlettersteigPayload} />
       ) : (
         <WorkoutContent payload={event.payload as WorkoutPayload} />
       )}

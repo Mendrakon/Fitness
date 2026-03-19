@@ -10,7 +10,7 @@ import type {
   MuscleGroup,
 } from "@/lib/types";
 
-export type FeedEventType = "pr" | "workout_complete" | "template_share";
+export type FeedEventType = "pr" | "workout_complete" | "template_share" | "klettersteig_complete";
 
 // ── Template share payload ────────────────────────────────────────────────────
 
@@ -221,11 +221,28 @@ export interface WorkoutPayload {
   prs: PRSummary[];
 }
 
+export interface KlettersteigPRSummary {
+  metric: string;
+  newValue: number;
+  oldValue: number;
+}
+
+export interface KlettersteigPayload {
+  sessionId: string;
+  routeName: string;
+  routeDifficulty: string;
+  locationName: string;
+  durationSeconds: number;
+  extraWeightKg: number;
+  weather: { condition: string; temperature: number | null; wind: string | null };
+  prs: KlettersteigPRSummary[];
+}
+
 export interface FeedEvent {
   id: string;
   userId: string;
   type: FeedEventType;
-  payload: WorkoutPayload | TemplateSharePayload;
+  payload: WorkoutPayload | TemplateSharePayload | KlettersteigPayload;
   createdAt: string;
   profile: {
     username: string;
@@ -359,7 +376,9 @@ export function useActivityFeed(filter: FeedFilter = "global") {
       const payload =
         type === "template_share"
           ? normalizeTemplateSharePayload(row.payload)
-          : (row.payload as WorkoutPayload);
+          : type === "klettersteig_complete"
+            ? (row.payload as KlettersteigPayload)
+            : (row.payload as WorkoutPayload);
       return {
         id: row.id,
         userId: row.user_id,
@@ -523,7 +542,7 @@ export function useActivityFeed(filter: FeedFilter = "global") {
   const createFeedEvent = useCallback(
     async (
       type: FeedEventType,
-      payload: WorkoutPayload,
+      payload: WorkoutPayload | KlettersteigPayload,
       visibility: FeedVisibility = "global"
     ) => {
       const client = createClient();

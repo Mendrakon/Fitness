@@ -21,6 +21,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
+import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
+import { KlettersteigTab } from "@/components/klettersteig/klettersteig-tab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mountain } from "lucide-react";
 import { useTimer } from "@/contexts/timer-context";
 import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
@@ -415,6 +419,34 @@ function WorkoutStartScreen() {
   );
 }
 
+// ── Klettersteig Active Hint ─────────────────────────────────────────────────
+
+function KlettersteigActiveHint({ onSwitch }: { onSwitch: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 pt-20 gap-4 text-center">
+      <Mountain className="h-12 w-12 text-muted-foreground" />
+      <h2 className="text-lg font-bold">Aktive Klettersteig-Session</h2>
+      <p className="text-sm text-muted-foreground">
+        Du hast eine laufende Klettersteig-Session. Beende sie zuerst, bevor du ein Gym-Workout startest.
+      </p>
+      <Button onClick={onSwitch}>Zur Klettersteig-Session</Button>
+    </div>
+  );
+}
+
+function GymActiveHint({ onSwitch }: { onSwitch: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 pt-20 gap-4 text-center">
+      <div className="text-4xl">🏋️</div>
+      <h2 className="text-lg font-bold">Aktives Gym-Workout</h2>
+      <p className="text-sm text-muted-foreground">
+        Du hast ein laufendes Gym-Workout. Beende es zuerst, bevor du eine Klettersteig-Session startest.
+      </p>
+      <Button onClick={onSwitch}>Zum Gym-Workout</Button>
+    </div>
+  );
+}
+
 // ── Main Workout Page ─────────────────────────────────────────────────────────
 
 export default function WorkoutPage() {
@@ -433,6 +465,11 @@ export default function WorkoutPage() {
   const { addPREvents } = usePersonalRecords();
   const { createFeedEvent } = useActivityFeed();
 
+  const { activeSession: activeKlettersteigSession } = useKlettersteigSession();
+
+  const [activeTab, setActiveTab] = useState<string>(
+    activeKlettersteigSession ? "klettersteig" : "gym"
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
@@ -463,7 +500,26 @@ export default function WorkoutPage() {
   if (!activeWorkout) {
     return (
       <>
-        <WorkoutStartScreen />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="px-4 pt-3">
+            <TabsList className="w-full">
+              <TabsTrigger value="gym" className="flex-1">Gym</TabsTrigger>
+              <TabsTrigger value="klettersteig" className="flex-1 gap-1.5">
+                <Mountain className="h-3.5 w-3.5" /> Klettersteig
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="gym">
+            {activeKlettersteigSession ? (
+              <KlettersteigActiveHint onSwitch={() => setActiveTab("klettersteig")} />
+            ) : (
+              <WorkoutStartScreen />
+            )}
+          </TabsContent>
+          <TabsContent value="klettersteig">
+            <KlettersteigTab />
+          </TabsContent>
+        </Tabs>
         <Dialog open={shareDialogOpen} onOpenChange={() => handleShare(null)}>
           <DialogContent>
             <DialogHeader>
