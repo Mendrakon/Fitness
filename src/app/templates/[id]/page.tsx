@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import { Plus, Trash2, GripVertical, Play, Save } from "lucide-react";
@@ -39,6 +39,17 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
     existing?.exercises || []
   );
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Sync state after localStorage hydration (templates load asynchronously)
+  useEffect(() => {
+    if (existing) {
+      setName(existing.name);
+      setFolderId(existing.folderId || "none");
+      setNotes(existing.notes || "");
+      setExercises(existing.exercises);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing?.id]);
 
   const handleAddExercises = (exerciseIds: string[]) => {
     const newExercises: TemplateExercise[] = exerciseIds.map(exId => ({
