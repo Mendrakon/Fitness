@@ -1,0 +1,78 @@
+<h2>Was öffnet sich beim Tippen auf den Button?</h2>
+<p class="subtitle">Wie soll die Challenges-Ansicht erscheinen?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="sheet" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d0d0d;padding:0;overflow:hidden;position:relative;height:200px">
+      <!-- Phone mockup -->
+      <div style="background:#1a1a2e;height:100%;display:flex;flex-direction:column">
+        <!-- Dimmed page behind -->
+        <div style="padding:16px;opacity:0.3;flex:1">
+          <div style="color:#fff;font-size:14px;font-weight:700">Klettersteig</div>
+          <div style="color:#aaa;font-size:11px">Hohe Wand · 9 Routen</div>
+          <div style="background:#2a2a2a;height:80px;border-radius:8px;margin-top:10px"></div>
+        </div>
+        <!-- Sheet sliding up -->
+        <div style="background:#1e1e2e;border-radius:16px 16px 0 0;padding:16px;border-top:1px solid #333">
+          <div style="width:36px;height:4px;background:#444;border-radius:2px;margin:0 auto 14px"></div>
+          <div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:12px">🏅 Meine Badges</div>
+          <div style="display:flex;gap:8px">
+            <div style="background:#1e3a5f;border-radius:8px;padding:8px;text-align:center;flex:1">
+              <div style="font-size:20px">🗺️</div>
+              <div style="color:#60a5fa;font-size:10px;margin-top:3px">Ersteiger</div>
+            </div>
+            <div style="background:#1e3a5f;border-radius:8px;padding:8px;text-align:center;flex:1">
+              <div style="font-size:20px">⚡</div>
+              <div style="color:#60a5fa;font-size:10px;margin-top:3px">Speedrunner</div>
+            </div>
+            <div style="background:#2a2a2a;border-radius:8px;padding:8px;text-align:center;flex:1;opacity:0.4">
+              <div style="font-size:20px">🔒</div>
+              <div style="color:#666;font-size:10px;margin-top:3px">???</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Bottom Sheet</h3>
+      <p>Schiebt sich von unten über die aktuelle Seite. Schnell erreichbar, bleibt im Kontext der Klettersteig-Seite. Gleicher Stil wie bestehende Drawers in der App.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="page" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d0d0d;padding:0;overflow:hidden;position:relative;height:200px">
+      <div style="background:#1a1a2e;height:100%;display:flex;flex-direction:column">
+        <!-- Header -->
+        <div style="padding:14px 16px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px">
+          <div style="color:#60a5fa;font-size:12px">← Zurück</div>
+          <div style="color:#fff;font-weight:700;font-size:14px">Challenges & Badges</div>
+        </div>
+        <!-- Content -->
+        <div style="padding:14px;flex:1">
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <div style="background:#1e3a5f;border-radius:20px;padding:4px 10px;font-size:11px;color:#60a5fa">Alle</div>
+            <div style="background:#2a2a2a;border-radius:20px;padding:4px 10px;font-size:11px;color:#aaa">Routen</div>
+            <div style="background:#2a2a2a;border-radius:20px;padding:4px 10px;font-size:11px;color:#aaa">Speed</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:#1e3a5f;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:22px">🗺️</div>
+              <div style="color:#fff;font-size:11px;font-weight:600;margin-top:4px">Hohe Wand</div>
+              <div style="color:#60a5fa;font-size:10px">Komplettierer</div>
+            </div>
+            <div style="background:#2a2a2a;border-radius:8px;padding:10px;text-align:center;opacity:0.5">
+              <div style="font-size:22px">🔒</div>
+              <div style="color:#aaa;font-size:11px;margin-top:4px">Gesperrt</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Eigene Seite</h3>
+      <p>Vollbild-Seite mit Navigation zurück. Mehr Platz für Details, Filter, Fortschrittsbalken. Passt zu den bestehenden Detailseiten der App.</p>
+    </div>
+  </div>
+
+</div>

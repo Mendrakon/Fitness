@@ -254,6 +254,16 @@ export interface KlettersteigPREvent {
   extraWeightKg: number;
 }
 
+export type BadgeCategory = "routen" | "speed" | "gewicht" | "kombi";
+
+export interface KlettersteigBadge {
+  id: string;        // "{badgeId}_{userId}"
+  userId: string;
+  badgeId: string;
+  earnedAt: string;  // ISO timestamp
+  sessionId: string;
+}
+
 export const KLETTERSTEIG_PR_METRIC_LABELS: Record<KlettersteigPRMetric, string> = {
   best_time: "Bestzeit",
   max_weight: "Max. Gewicht",

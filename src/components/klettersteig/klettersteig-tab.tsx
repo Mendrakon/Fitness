@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
 import { useKlettersteigRoutes } from "@/hooks/use-klettersteig-routes";
 import { useKlettersteigSessions } from "@/hooks/use-klettersteig-sessions";
 import { useKlettersteigPRs } from "@/hooks/use-klettersteig-prs";
+import { useKlettersteigBadges } from "@/hooks/use-klettersteig-badges";
 import { useActivityFeed, type FeedVisibility } from "@/hooks/use-activity-feed";
 import { detectKlettersteigPRs } from "@/lib/klettersteig-pr-detection";
+import { detectKlettersteigBadges, BADGE_DEFINITIONS } from "@/lib/klettersteig-badges";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { Button } from "@/components/ui/button";
 import { RouteDrawer } from "./route-drawer";
 import { SessionInput } from "./session-input";
 import { ActiveSession } from "./active-session";
@@ -37,6 +42,7 @@ export function KlettersteigTab() {
   const { routes } = useKlettersteigRoutes();
   const { sessions, save, getForRoute, getBestTime, getMaxWeight } = useKlettersteigSessions();
   const { addPREvents } = useKlettersteigPRs();
+  const { badges, addBadges } = useKlettersteigBadges();
   const { activeSession, startSession, finishSession, discardSession, updateNotes, elapsedSeconds } =
     useKlettersteigSession();
   const { createFeedEvent } = useActivityFeed();
@@ -100,6 +106,22 @@ export function KlettersteigTab() {
       }
     }
 
+    const newBadges = detectKlettersteigBadges(
+      [...sessions, finished],
+      badges.map((b) => b.badgeId),
+      finished
+    );
+    if (newBadges.length > 0) {
+      addBadges(newBadges);
+      for (const badge of newBadges) {
+        const def = BADGE_DEFINITIONS.find((d) => d.id === badge.badgeId);
+        toast.success(`${def?.emoji} Badge freigeschaltet!`, {
+          description: def?.name,
+          duration: 5000,
+        });
+      }
+    }
+
     setSummaryNotes("");
     setFlow({ step: "summary", session: finished, prs });
   }, [finishSession, sessions, routes, addPREvents]);
@@ -141,6 +163,20 @@ export function KlettersteigTab() {
     },
     [flow, summaryNotes, save, routes, createFeedEvent]
   );
+
+  const newBadgeCount = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    const seen: string[] = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.KLETTERSTEIG_SEEN_BADGES) ?? "[]"
+    );
+    const seenSet = new Set(seen);
+    return badges.filter((b) => !seenSet.has(b.badgeId)).length;
+  }, [badges]);
+
+  const markBadgesSeen = useCallback(() => {
+    const ids = badges.map((b) => b.badgeId);
+    localStorage.setItem(STORAGE_KEYS.KLETTERSTEIG_SEEN_BADGES, JSON.stringify(ids));
+  }, [badges]);
 
   // Active session view
   if (flow.step === "active" && activeSession) {
@@ -192,8 +228,22 @@ export function KlettersteigTab() {
 
   return (
     <div className="flex flex-col px-4 pt-5 pb-28 gap-4">
-      <h1 className="text-3xl font-bold tracking-tight">Klettersteig</h1>
-      <p className="text-sm text-muted-foreground -mt-2">Hohe Wand · {routes.length} Routen</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Klettersteig</h1>
+          <p className="text-sm text-muted-foreground">Hohe Wand · {routes.length} Routen</p>
+        </div>
+        <Button variant="outline" size="sm" asChild className="relative mt-1" onClick={markBadgesSeen}>
+          <Link href="/klettersteig/challenges">
+            🏅 Badges
+            {newBadgeCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5">
+                {newBadgeCount}
+              </span>
+            )}
+          </Link>
+        </Button>
+      </div>
 
       {/* Map */}
       <div className="h-72 rounded-lg overflow-hidden border border-border">

@@ -9,4 +9,5 @@ export const STORAGE_KEYS = {
   PR_EVENTS: "fitness-pr-events",
   ACTIVE_KLETTERSTEIG_SESSION: "fitness-active-klettersteig-session",
   KLETTERSTEIG_ELAPSED: "fitness-klettersteig-elapsed",
+  KLETTERSTEIG_SEEN_BADGES: "fitness-klettersteig-seen-badges",
 } as const;
