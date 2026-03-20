@@ -449,7 +449,7 @@ function GymActiveHint({ onSwitch }: { onSwitch: () => void }) {
 
 // ── Main Workout Page ─────────────────────────────────────────────────────────
 
-export default function WorkoutPage() {
+function WorkoutPageInner() {
   const router = useRouter();
   const {
     activeWorkout, startEmptyWorkout, finishWorkout, discardWorkout,
@@ -1303,6 +1303,14 @@ export default function WorkoutPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function WorkoutPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <WorkoutPageInner />
+    </React.Suspense>
   );
 }
 
