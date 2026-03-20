@@ -83,7 +83,7 @@ export default function KlettersteigRouteDetailPage() {
       <div className="flex flex-col items-center justify-center px-4 pt-20 gap-4 text-center">
         <Mountain className="h-12 w-12 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Route nicht gefunden</p>
-        <Button variant="outline" onClick={() => router.back()}>Zurück</Button>
+        <Button variant="outline" onClick={() => router.push("/workout?tab=klettersteig")}>Zurück</Button>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function KlettersteigRouteDetailPage() {
     <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push("/workout?tab=klettersteig")}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-3 flex-1">

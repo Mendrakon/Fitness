@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus, GripVertical, Trash2, MoreVertical, Check, MessageSquare,
   ChevronDown, ChevronUp, Link2, Unlink, Minus, SkipForward, Timer, Clock,
@@ -24,7 +24,7 @@ import { useActiveWorkout } from "@/contexts/active-workout-context";
 import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
 import { KlettersteigTab } from "@/components/klettersteig/klettersteig-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mountain } from "lucide-react";
+import { Mountain, Dumbbell } from "lucide-react";
 import { useTimer } from "@/contexts/timer-context";
 import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
@@ -466,9 +466,10 @@ export default function WorkoutPage() {
   const { createFeedEvent } = useActivityFeed();
 
   const { activeSession: activeKlettersteigSession } = useKlettersteigSession();
+  const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<string>(
-    activeKlettersteigSession ? "klettersteig" : "gym"
+    activeKlettersteigSession ? "klettersteig" : (searchParams.get("tab") ?? "gym")
   );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
@@ -503,7 +504,7 @@ export default function WorkoutPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="px-4 pt-3">
             <TabsList className="w-full">
-              <TabsTrigger value="gym" className="flex-1">Gym</TabsTrigger>
+              <TabsTrigger value="gym" className="flex-1 gap-1.5"><Dumbbell className="h-3.5 w-3.5" /> Gym</TabsTrigger>
               <TabsTrigger value="klettersteig" className="flex-1 gap-1.5">
                 <Mountain className="h-3.5 w-3.5" /> Klettersteig
               </TabsTrigger>
