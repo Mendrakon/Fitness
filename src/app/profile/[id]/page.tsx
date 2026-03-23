@@ -490,12 +490,12 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                       Abzeichen ({earnedBadges.length})
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {earnedBadges.map((badge) => (
                         <Popover key={badge.id}>
                           <PopoverTrigger asChild>
                             <button
-                              className="h-9 w-9 flex items-center justify-center rounded-lg text-lg hover:bg-muted transition-colors"
+                              className="h-10 w-10 flex items-center justify-center rounded-lg text-lg bg-muted/50 border border-border hover:bg-muted transition-colors"
                               title={badge.name}
                             >
                               {badge.emoji}
