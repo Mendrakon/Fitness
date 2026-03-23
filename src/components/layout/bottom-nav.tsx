@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { Home, Clock, Dumbbell, User, Plus, Users, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
+import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
 import { formatDuration } from "@/lib/calculations";
+import { formatKlettersteigTime } from "@/lib/types";
 import { usePendingRequests } from "@/hooks/use-pending-requests";
 import { useNewCommunityPosts } from "@/hooks/use-new-community-posts";
 
@@ -22,8 +24,10 @@ const tabs = [
 export function BottomNav() {
   const pathname = usePathname();
   const { activeWorkout, elapsedSeconds } = useActiveWorkout();
+  const { activeSession: activeKlettersteig, elapsedSeconds: ksElapsed } = useKlettersteigSession();
   const pendingRequests = usePendingRequests();
   const newCommunityPosts = useNewCommunityPosts();
+  const hasActiveSession = !!(activeWorkout || activeKlettersteig);
 
   if (pathname === "/login" || pathname === "/register") return null;
 
@@ -46,7 +50,7 @@ export function BottomNav() {
                 <div
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all",
-                    activeWorkout
+                    hasActiveSession
                       ? "bg-green-500 text-white animate-pulse"
                       : "bg-primary text-primary-foreground"
                   )}
@@ -56,6 +60,10 @@ export function BottomNav() {
                 {activeWorkout ? (
                   <span className="mt-0.5 text-[10px] font-medium text-green-600">
                     {formatDuration(elapsedSeconds)}
+                  </span>
+                ) : activeKlettersteig ? (
+                  <span className="mt-0.5 text-[10px] font-medium text-green-600">
+                    {formatKlettersteigTime(ksElapsed)}
                   </span>
                 ) : (
                   <span className="mt-0.5 text-[10px] font-medium text-muted-foreground">

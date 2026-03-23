@@ -2,18 +2,29 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Dumbbell, Clock, TrendingUp, ChevronRight, Flame, Trophy } from "lucide-react";
+import { Plus, Dumbbell, Clock, TrendingUp, ChevronRight, Flame, Trophy, Mountain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
+import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
 import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
 import { useExercises } from "@/hooks/use-exercises";
 import { usePersonalRecords } from "@/hooks/use-personal-records";
+import { useKlettersteigSessions } from "@/hooks/use-klettersteig-sessions";
+import { useKlettersteigRoutes } from "@/hooks/use-klettersteig-routes";
+import { useKlettersteigPRs } from "@/hooks/use-klettersteig-prs";
 import { useSettings } from "@/hooks/use-settings";
 import { formatDurationFromDates } from "@/lib/calculations";
-import { formatPRDiff } from "@/lib/types";
+import {
+  formatPRDiff,
+  formatKlettersteigTime,
+  formatKlettersteigPRDiff,
+  KLETTERSTEIG_PR_METRIC_LABELS,
+  KLETTERSTEIG_DIFFICULTY_COLORS,
+} from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
@@ -22,11 +33,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function HomePage() {
   const router = useRouter();
   const { activeWorkout } = useActiveWorkout();
+  const { activeSession: activeKlettersteigSession } = useKlettersteigSession();
   const { workouts, loading } = useWorkouts();
   const { templates } = useTemplates();
   const { getById: getExercise } = useExercises();
   const { settings } = useSettings();
   const { getRecent: getRecentPRs, getTimeline } = usePersonalRecords(workouts, settings);
+  const { getRecent: getRecentKlettersteig } = useKlettersteigSessions();
+  const { getById: getRoute } = useKlettersteigRoutes();
+  const { getRecent: getRecentKlettersteigPRs } = useKlettersteigPRs();
 
   const completedWorkouts = workouts.filter(w => w.endTime);
 
@@ -44,6 +59,8 @@ export default function HomePage() {
     return result;
   })();
   const recentWorkouts = completedWorkouts.slice(0, 5);
+  const recentKlettersteig = getRecentKlettersteig(3);
+  const recentKlettersteigPRs = getRecentKlettersteigPRs(3);
 
   // Stats
   const now = new Date();
@@ -119,6 +136,27 @@ export default function HomePage() {
               <p className="text-sm text-green-600">
                 {activeWorkout.exercises.length} Übungen &middot; Läuft
               </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-green-600" />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Klettersteig Session Banner */}
+      {activeKlettersteigSession && (
+        <Card
+          className="cursor-pointer border-green-500/50 bg-green-500/10"
+          onClick={() => router.push("/workout")}
+        >
+          <CardContent className="flex items-center gap-3 py-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500 text-white">
+              <Mountain className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-green-700">
+                {getRoute(activeKlettersteigSession.routeId)?.name ?? "Klettersteig"}
+              </p>
+              <p className="text-sm text-green-600">Läuft</p>
             </div>
             <ChevronRight className="h-5 w-5 text-green-600" />
           </CardContent>
@@ -280,6 +318,83 @@ export default function HomePage() {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Klettersteig PRs */}
+      {recentKlettersteigPRs.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Klettersteig PRs
+          </h2>
+          {recentKlettersteigPRs.map((pr) => {
+            const route = getRoute(pr.routeId);
+            return (
+              <Card
+                key={pr.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/klettersteig/${pr.routeId}`)}
+              >
+                <CardContent className="flex items-center gap-3 py-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-500/10">
+                    <Trophy className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">
+                      {route?.name ?? "Route"} · {KLETTERSTEIG_PR_METRIC_LABELS[pr.metric]}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(pr.date), "d. MMM", { locale: de })}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0 text-xs font-semibold text-yellow-700 bg-yellow-500/10">
+                    {formatKlettersteigPRDiff(pr)}
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Recent Klettersteig Sessions */}
+      {recentKlettersteig.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Letzte Klettersteige
+            </h2>
+          </div>
+          {recentKlettersteig.map((s) => {
+            const route = getRoute(s.routeId);
+            return (
+              <Card
+                key={s.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/klettersteig/session/${s.id}`)}
+              >
+                <CardContent className="flex items-center gap-3 py-3">
+                  <div
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg text-white font-bold text-[10px] shrink-0",
+                      route ? KLETTERSTEIG_DIFFICULTY_COLORS[route.difficulty] : "bg-muted"
+                    )}
+                  >
+                    {route?.difficulty ?? "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{route?.name ?? "Route"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(s.startTime), "d. MMM yyyy", { locale: de })}
+                      {" · "}{formatKlettersteigTime(s.durationSeconds)}
+                      {s.extraWeightKg > 0 && ` · ${s.extraWeightKg} kg`}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

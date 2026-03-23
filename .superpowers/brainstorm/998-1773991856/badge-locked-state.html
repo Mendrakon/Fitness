@@ -1,0 +1,70 @@
+<h2>Wie sehen gesperrte Badges aus?</h2>
+<p class="subtitle">Zeigen wir Fortschritt bevor ein Badge freigeschaltet ist?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="mystery" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d0d0d;padding:20px;display:flex;gap:12px;justify-content:center;align-items:center">
+      <!-- Unlocked -->
+      <div style="text-align:center">
+        <div style="background:#1e3a5f;border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px">⚡</div>
+        <div style="color:#60a5fa;font-size:11px;margin-top:6px;font-weight:600">Speedrunner</div>
+        <div style="color:#4ade80;font-size:10px;margin-top:2px">✓ Freigeschaltet</div>
+      </div>
+      <!-- Locked -->
+      <div style="text-align:center">
+        <div style="background:#222;border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px;opacity:0.4">🔒</div>
+        <div style="color:#555;font-size:11px;margin-top:6px">???</div>
+        <div style="color:#444;font-size:10px;margin-top:2px">Noch gesperrt</div>
+      </div>
+      <!-- Locked -->
+      <div style="text-align:center">
+        <div style="background:#222;border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px;opacity:0.4">🔒</div>
+        <div style="color:#555;font-size:11px;margin-top:6px">???</div>
+        <div style="color:#444;font-size:10px;margin-top:2px">Noch gesperrt</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Mystery — Inhalt versteckt</h3>
+      <p>Gesperrte Badges sind komplett anonym (🔒 + "???"). Mehr Spannung & Überraschungseffekt beim Freischalten.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="visible-progress" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d0d0d;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <!-- Unlocked badge -->
+      <div style="display:flex;align-items:center;gap:12px;background:#1e3a5f;border-radius:10px;padding:10px">
+        <div style="font-size:24px">🗺️</div>
+        <div style="flex:1">
+          <div style="color:#fff;font-size:12px;font-weight:600">Hohe Wand Komplettierer</div>
+          <div style="color:#4ade80;font-size:11px">✓ Freigeschaltet</div>
+        </div>
+      </div>
+      <!-- In-progress badge -->
+      <div style="display:flex;align-items:center;gap:12px;background:#1a1a2e;border-radius:10px;padding:10px;border:1px solid #333">
+        <div style="font-size:24px;opacity:0.6">⚡</div>
+        <div style="flex:1">
+          <div style="color:#aaa;font-size:12px;font-weight:600">Speed-Läufer</div>
+          <div style="color:#666;font-size:11px;margin-bottom:5px">Hanselsteig unter 45 Min</div>
+          <div style="background:#333;border-radius:4px;height:4px">
+            <div style="background:#eab308;width:60%;height:100%;border-radius:4px"></div>
+          </div>
+          <div style="color:#eab308;font-size:10px;margin-top:3px">Bestzeit: 52 Min — noch 7 Min zu verbessern</div>
+        </div>
+      </div>
+      <!-- Locked badge -->
+      <div style="display:flex;align-items:center;gap:12px;background:#1a1a2e;border-radius:10px;padding:10px;border:1px solid #333;opacity:0.5">
+        <div style="font-size:24px;opacity:0.4">🎒</div>
+        <div style="flex:1">
+          <div style="color:#aaa;font-size:12px;font-weight:600">Lastentier</div>
+          <div style="color:#666;font-size:11px">Route mit 20kg absolvieren</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Sichtbarer Fortschritt</h3>
+      <p>Gesperrte Badges zeigen Ziel & aktuellen Fortschritt (Balken + Hinweis). Motivierender, aber weniger Überraschung.</p>
+    </div>
+  </div>
+
+</div>

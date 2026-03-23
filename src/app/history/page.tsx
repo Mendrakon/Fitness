@@ -3,40 +3,61 @@
 import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Dumbbell, ChevronRight, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { MuscleHeatmap } from "@/components/muscle-heatmap";
 import { useWorkouts } from "@/hooks/use-workouts";
+import { useKlettersteigSessions } from "@/hooks/use-klettersteig-sessions";
+import { useKlettersteigRoutes } from "@/hooks/use-klettersteig-routes";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExercises } from "@/hooks/use-exercises";
 import { formatDurationFromDates } from "@/lib/calculations";
+import { formatKlettersteigTime, KLETTERSTEIG_DIFFICULTY_COLORS } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+
+type HistoryItem =
+  | { type: "workout"; id: string; startTime: string; data: ReturnType<typeof useWorkouts>["workouts"][0] }
+  | { type: "klettersteig"; id: string; startTime: string; data: ReturnType<typeof useKlettersteigSessions>["sessions"][0] };
 
 export default function HistoryPage() {
   const router = useRouter();
   const { workouts, loading } = useWorkouts();
   const { getById: getExercise } = useExercises();
+  const { sessions: klettersteigSessions, loading: ksLoading } = useKlettersteigSessions();
+  const { getById: getRoute } = useKlettersteigRoutes();
 
   const completedWorkouts = workouts.filter(w => w.endTime);
+  const completedKS = klettersteigSessions.filter(s => s.endTime);
 
   const getMuscleGroup = useCallback(
     (exerciseId: string) => getExercise(exerciseId)?.muscleGroup,
     [getExercise]
   );
 
+  const allItems: HistoryItem[] = useMemo(() => {
+    const items: HistoryItem[] = [
+      ...completedWorkouts.map((w): HistoryItem => ({ type: "workout", id: w.id, startTime: w.startTime, data: w })),
+      ...completedKS.map((s): HistoryItem => ({ type: "klettersteig", id: s.id, startTime: s.startTime, data: s })),
+    ];
+    items.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    return items;
+  }, [completedWorkouts, completedKS]);
+
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof completedWorkouts>();
-    completedWorkouts.forEach(w => {
-      const key = format(new Date(w.startTime), "MMMM yyyy", { locale: de });
+    const map = new Map<string, HistoryItem[]>();
+    allItems.forEach(item => {
+      const key = format(new Date(item.startTime), "MMMM yyyy", { locale: de });
       const list = map.get(key) || [];
-      list.push(w);
+      list.push(item);
       map.set(key, list);
     });
     return map;
-  }, [completedWorkouts]);
+  }, [allItems]);
 
-  if (loading) {
+  if (loading || ksLoading) {
     return (
       <div className="flex flex-col gap-0">
         <PageHeader title="Verlauf" />
@@ -71,22 +92,60 @@ export default function HistoryPage() {
           getMuscleGroup={getMuscleGroup}
         />
 
-        {completedWorkouts.length === 0 ? (
+        {allItems.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <Clock className="h-8 w-8 text-muted-foreground mb-2" />
             <h3 className="font-semibold mb-1">Noch kein Verlauf</h3>
             <p className="text-sm text-muted-foreground">
-              Schließe dein erstes Workout ab, um es hier zu sehen.
+              Schließe dein erstes Workout oder deine erste Klettersteig-Session ab.
             </p>
           </div>
         ) : (
-          Array.from(grouped.entries()).map(([month, ws]) => (
+          Array.from(grouped.entries()).map(([month, items]) => (
             <div key={month} className="mb-5">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 {month}
               </h3>
               <div className="space-y-2">
-                {ws.map(w => {
+                {items.map(item => {
+                  if (item.type === "klettersteig") {
+                    const s = item.data as typeof klettersteigSessions[0];
+                    const route = getRoute(s.routeId);
+                    return (
+                      <Card
+                        key={s.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/klettersteig/session/${s.id}`)}
+                      >
+                        <CardContent className="flex items-center gap-3 py-3">
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-lg text-white font-bold text-xs shrink-0",
+                              route ? KLETTERSTEIG_DIFFICULTY_COLORS[route.difficulty] : "bg-muted"
+                            )}
+                          >
+                            {route?.difficulty ?? "?"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-sm truncate">{route?.name ?? "Route"}</p>
+                              <Badge variant="outline" className="text-[10px] h-4 px-1">Klettersteig</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(s.startTime), "EEE, d. MMM · HH:mm", { locale: de })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatKlettersteigTime(s.durationSeconds)}
+                              {s.extraWeightKg > 0 && ` · ${s.extraWeightKg} kg`}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+
+                  const w = item.data as typeof completedWorkouts[0];
                   const totalVolume = w.exercises.reduce((sum, ex) => {
                     return sum + ex.sets
                       .filter(s => s.completed && s.tag !== "warmup" && s.weight && s.reps)

@@ -1,0 +1,189 @@
+<h2>Klettersteig Session-Flow</h2>
+<p class="subtitle">So sieht der Ablauf aus: Karte → Route-Info → Timer → Fertig</p>
+
+<div style="display: flex; flex-direction: column; gap: 32px; max-width: 800px; margin: 0 auto;">
+
+  <!-- Step 1: Map View -->
+  <div class="section">
+    <span class="label">Schritt 1: Karte</span>
+    <div class="mockup">
+      <div class="mockup-header">Workout → Klettersteig Tab</div>
+      <div class="mockup-body" style="background: #111827; padding: 0;">
+        <!-- Toggle tabs -->
+        <div style="display: flex; border-bottom: 2px solid #1f2937; background: #0f172a;">
+          <div style="flex:1; padding: 10px; text-align:center; color: #6b7280; font-size: 14px;">Gym</div>
+          <div style="flex:1; padding: 10px; text-align:center; color: white; font-size: 14px; font-weight: 600; border-bottom: 2px solid #3b82f6; margin-bottom: -2px;">Klettersteig</div>
+        </div>
+        <!-- Map area -->
+        <div style="background: #1a2332; padding: 16px; min-height: 200px; position: relative;">
+          <!-- Fake topo map -->
+          <svg viewBox="0 0 360 180" style="width:100%; border-radius: 8px; overflow: hidden;">
+            <rect width="360" height="180" fill="#2d3748"/>
+            <!-- Topo contours -->
+            <ellipse cx="180" cy="90" rx="160" ry="70" fill="none" stroke="#3d4a5c" stroke-width="0.5"/>
+            <ellipse cx="180" cy="90" rx="130" ry="55" fill="none" stroke="#3d4a5c" stroke-width="0.5"/>
+            <ellipse cx="180" cy="90" rx="100" ry="40" fill="none" stroke="#3d4a5c" stroke-width="0.5"/>
+            <ellipse cx="180" cy="90" rx="70" ry="28" fill="none" stroke="#3d4a5c" stroke-width="0.5"/>
+            <!-- Route markers -->
+            <circle cx="100" cy="70" r="12" fill="#ef4444" stroke="white" stroke-width="2"/>
+            <text x="100" y="75" fill="white" font-size="10" text-anchor="middle" font-weight="bold">1</text>
+            <circle cx="160" cy="55" r="12" fill="#f59e0b" stroke="white" stroke-width="2"/>
+            <text x="160" y="60" fill="white" font-size="10" text-anchor="middle" font-weight="bold">2</text>
+            <circle cx="230" cy="65" r="12" fill="#22c55e" stroke="white" stroke-width="2"/>
+            <text x="230" y="70" fill="white" font-size="10" text-anchor="middle" font-weight="bold">3</text>
+            <circle cx="280" cy="80" r="12" fill="#3b82f6" stroke="white" stroke-width="2"/>
+            <text x="280" y="85" fill="white" font-size="10" text-anchor="middle" font-weight="bold">4</text>
+            <text x="180" y="170" fill="#6b7280" font-size="9" text-anchor="middle">Hohe Wand · OpenStreetMap</text>
+          </svg>
+          <!-- Route legend -->
+          <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+            <span style="font-size: 11px; color: #ef4444; background: #ef444420; padding: 2px 8px; border-radius: 12px;">1 Steirerspur C/D</span>
+            <span style="font-size: 11px; color: #f59e0b; background: #f59e0b20; padding: 2px 8px; border-radius: 12px;">2 Hanselsteig A/B</span>
+            <span style="font-size: 11px; color: #22c55e; background: #22c55e20; padding: 2px 8px; border-radius: 12px;">3 Wildenauersteig C</span>
+            <span style="font-size: 11px; color: #3b82f6; background: #3b82f620; padding: 2px 8px; border-radius: 12px;">4 Gebirgsvereinssteig B</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Route Detail Drawer -->
+  <div class="section">
+    <span class="label">Schritt 2: Route antippen → Info-Drawer</span>
+    <div class="mockup">
+      <div class="mockup-header">Route-Detail (Drawer von unten)</div>
+      <div class="mockup-body" style="background: #111827; padding: 0;">
+        <!-- Dimmed map behind -->
+        <div style="background: #0a0f18; padding: 16px; opacity: 0.4; min-height: 80px; text-align: center; color: #4b5563; font-size: 12px;">
+          [ Karte gedimmt im Hintergrund ]
+        </div>
+        <!-- Drawer -->
+        <div style="background: #1f2937; border-radius: 12px 12px 0 0; padding: 16px;">
+          <!-- Handle -->
+          <div style="width: 32px; height: 4px; background: #4b5563; border-radius: 2px; margin: 0 auto 16px;"></div>
+          <!-- Route info -->
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="background: #ef4444; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;">C/D</div>
+            <div>
+              <div style="color: white; font-weight: 600; font-size: 16px;">Steirerspur</div>
+              <div style="color: #9ca3af; font-size: 12px;">Hohe Wand · 280 Hm</div>
+            </div>
+          </div>
+          <!-- Stats grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+            <div style="background: #111827; padding: 10px; border-radius: 8px; text-align: center;">
+              <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Bestzeit</div>
+              <div style="color: #22c55e; font-weight: 700; font-size: 18px;">42:15</div>
+            </div>
+            <div style="background: #111827; padding: 10px; border-radius: 8px; text-align: center;">
+              <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Sessions</div>
+              <div style="color: white; font-weight: 700; font-size: 18px;">12</div>
+            </div>
+            <div style="background: #111827; padding: 10px; border-radius: 8px; text-align: center;">
+              <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Max. Gewicht</div>
+              <div style="color: #f59e0b; font-weight: 700; font-size: 18px;">15 kg</div>
+            </div>
+          </div>
+          <!-- Last sessions -->
+          <div style="color: #9ca3af; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">Letzte Sessions</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+            <div style="background: #111827; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #9ca3af; font-size: 12px;">15. März 2026</span>
+              <span style="color: white; font-size: 13px; font-weight: 500;">45:20 · 10 kg · ☀️</span>
+            </div>
+            <div style="background: #111827; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #9ca3af; font-size: 12px;">8. März 2026</span>
+              <span style="color: white; font-size: 13px; font-weight: 500;">42:15 · 15 kg · ⛅</span>
+            </div>
+          </div>
+          <!-- Action buttons -->
+          <div style="display: flex; gap: 8px;">
+            <button style="flex: 1; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">▶ Session starten</button>
+            <button style="background: #374151; color: white; border: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;">📊 Details</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Active Session (Timer) -->
+  <div class="section">
+    <span class="label">Schritt 3: Aktive Session (Timer läuft)</span>
+    <div class="mockup">
+      <div class="mockup-header">Aktive Klettersteig-Session</div>
+      <div class="mockup-body" style="background: #111827; padding: 20px;">
+        <!-- Route header -->
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="color: #9ca3af; font-size: 12px; text-transform: uppercase;">Aktive Session</div>
+          <div style="color: white; font-size: 20px; font-weight: 700;">Steirerspur</div>
+          <span style="background: #ef444430; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 12px;">C/D</span>
+        </div>
+        <!-- Big Timer -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="color: #22c55e; font-size: 48px; font-weight: 700; font-family: monospace; letter-spacing: 2px;">23:45</div>
+          <div style="color: #6b7280; font-size: 12px;">Laufzeit</div>
+        </div>
+        <!-- Session info -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px;">
+          <div style="background: #1f2937; padding: 12px; border-radius: 8px; text-align: center;">
+            <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Zusatzgewicht</div>
+            <div style="color: white; font-weight: 600; font-size: 16px;">10 kg</div>
+          </div>
+          <div style="background: #1f2937; padding: 12px; border-radius: 8px; text-align: center;">
+            <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Wetter</div>
+            <div style="color: white; font-weight: 600; font-size: 16px;">☀️ 18°C</div>
+          </div>
+        </div>
+        <!-- Bestzeit comparison -->
+        <div style="background: #1f2937; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 24px;">
+          <div style="color: #9ca3af; font-size: 11px;">Deine Bestzeit: <span style="color: #22c55e; font-weight: 600;">42:15</span></div>
+          <div style="color: #6b7280; font-size: 11px; margin-top: 4px;">Noch 18:30 unter Bestzeit 💪</div>
+        </div>
+        <!-- Stop button -->
+        <button style="width: 100%; background: #ef4444; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 16px; cursor: pointer;">⏹ Session beenden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Session Complete -->
+  <div class="section">
+    <span class="label">Schritt 4: Session abgeschlossen</span>
+    <div class="mockup">
+      <div class="mockup-header">Session-Zusammenfassung</div>
+      <div class="mockup-body" style="background: #111827; padding: 20px;">
+        <!-- Celebration -->
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 32px;">🏔️</div>
+          <div style="color: white; font-size: 18px; font-weight: 700;">Session abgeschlossen!</div>
+          <div style="color: #9ca3af; font-size: 13px;">Steirerspur · C/D</div>
+        </div>
+        <!-- Results -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+          <div style="background: #1f2937; padding: 12px; border-radius: 8px; text-align: center;">
+            <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Zeit</div>
+            <div style="color: white; font-weight: 700; font-size: 20px;">44:32</div>
+          </div>
+          <div style="background: #1f2937; padding: 12px; border-radius: 8px; text-align: center;">
+            <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase;">Gewicht</div>
+            <div style="color: white; font-weight: 700; font-size: 20px;">10 kg</div>
+          </div>
+        </div>
+        <!-- PR notification -->
+        <div style="background: #22c55e20; border: 1px solid #22c55e40; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div style="color: #22c55e; font-weight: 600; font-size: 13px;">🏆 Neuer PR! Schwerste Session mit 10 kg</div>
+        </div>
+        <!-- Weather + Notes -->
+        <div style="background: #1f2937; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div style="color: #9ca3af; font-size: 11px;">☀️ 18°C · Windstill</div>
+        </div>
+        <!-- Notes textarea -->
+        <textarea style="width: 100%; background: #1f2937; color: white; border: 1px solid #374151; padding: 10px; border-radius: 8px; font-size: 13px; resize: none; height: 50px; box-sizing: border-box;" placeholder="Notizen zur Session..."></textarea>
+        <!-- Actions -->
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button style="flex: 1; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">💾 Speichern</button>
+          <button style="background: #374151; color: white; border: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;">📤 Teilen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
