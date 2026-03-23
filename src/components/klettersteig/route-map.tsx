@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import type { KlettersteigRoute, KlettersteigDifficulty } from "@/lib/types";
+import type { KlettersteigRoute, KlettersteigDifficulty, KlettersteigParking } from "@/lib/types";
 
 import "leaflet/dist/leaflet.css";
 
@@ -36,6 +36,21 @@ function createIcon(difficulty: KlettersteigDifficulty, isSelected: boolean) {
   });
 }
 
+function createParkingIcon() {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:20px;height:20px;border-radius:4px;
+      background:#3b82f6;border:2px solid white;
+      box-shadow:0 1px 4px rgba(0,0,0,0.4);
+      color:white;font-weight:bold;font-size:11px;
+      line-height:20px;text-align:center;
+    ">P</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
 function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
   const map = useMap();
   useEffect(() => {
@@ -60,9 +75,10 @@ interface RouteMapProps {
   onRouteSelect: (route: KlettersteigRoute) => void;
   center: [number, number];
   zoom: number;
+  parkingSpots?: KlettersteigParking[];
 }
 
-export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom }: RouteMapProps) {
+export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom, parkingSpots = [] }: RouteMapProps) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null;
 
   return (
@@ -92,6 +108,34 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom 
                 {route.difficulty}
               </span>
               {route.elevationGain && ` · ${route.elevationGain} Hm`}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+      {parkingSpots.map((p) => (
+        <Marker
+          key={p.id}
+          position={[p.latitude, p.longitude]}
+          icon={createParkingIcon()}
+        >
+          <Popup>
+            <div style={{ fontFamily: "inherit", minWidth: 140 }}>
+              <strong>P {p.name}</strong>
+              {p.description && (
+                <>
+                  <br />
+                  <span style={{ fontSize: 11 }}>{p.description}</span>
+                </>
+              )}
+              <br />
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#3b82f6", fontSize: 12 }}
+              >
+                Navigation starten
+              </a>
             </div>
           </Popup>
         </Marker>

@@ -8,8 +8,9 @@ import {
   WEATHER_ICONS,
   formatKlettersteigTime,
 } from "@/lib/types";
-import type { KlettersteigRoute, KlettersteigSession } from "@/lib/types";
+import type { KlettersteigRoute, KlettersteigSession, KlettersteigParking } from "@/lib/types";
 import { getLocationName } from "@/lib/klettersteig-locations";
+import { getParkingForRoute } from "@/lib/klettersteig-parking";
 import { cn } from "@/lib/utils";
 
 interface RouteDrawerProps {
@@ -36,6 +37,14 @@ export function RouteDrawer({
   if (!route) return null;
 
   const recentSessions = sessions.slice(0, 3);
+  const parkingSpots = getParkingForRoute(route.parkingIds);
+
+  function openNavigation(parking: KlettersteigParking) {
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${parking.latitude},${parking.longitude}`,
+      "_blank"
+    );
+  }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -104,6 +113,37 @@ export function RouteDrawer({
                     {s.weather?.condition && ` · ${WEATHER_ICONS[s.weather.condition]}`}
                   </span>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Parkplätze */}
+          {parkingSpots.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase">
+                Parkplätze
+              </p>
+              {parkingSpots.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => openNavigation(p)}
+                  className="flex items-center gap-3 w-full rounded-md bg-muted/30 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded bg-blue-500 text-white text-xs font-bold shrink-0">
+                    P
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{p.name}</p>
+                    {p.description && (
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {p.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground text-xs shrink-0">
+                    Navigation ›
+                  </span>
+                </button>
               ))}
             </div>
           )}

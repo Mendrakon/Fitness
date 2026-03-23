@@ -16,6 +16,11 @@ type DbRoute = {
   description: string | null;
 };
 
+// Lookup for parkingIds from hardcoded routes (not stored in DB)
+const PARKING_IDS_MAP = new Map(
+  ALL_KLETTERSTEIG_ROUTES.map((r) => [r.id, r.parkingIds])
+);
+
 function toRoute(row: DbRoute): KlettersteigRoute {
   return {
     id: row.id,
@@ -26,6 +31,7 @@ function toRoute(row: DbRoute): KlettersteigRoute {
     longitude: row.longitude,
     elevationGain: row.elevation_gain ?? undefined,
     description: row.description ?? undefined,
+    parkingIds: PARKING_IDS_MAP.get(row.id),
   };
 }
 

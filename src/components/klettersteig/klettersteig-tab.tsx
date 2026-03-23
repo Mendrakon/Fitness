@@ -13,6 +13,7 @@ import { detectKlettersteigPRs } from "@/lib/klettersteig-pr-detection";
 import { detectKlettersteigBadges, BADGE_DEFINITIONS } from "@/lib/klettersteig-badges";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { GEBIRGE_LOCATIONS, GEBIRGE_MAP, getLocationName } from "@/lib/klettersteig-locations";
+import { getParkingForRoute } from "@/lib/klettersteig-parking";
 import { Button } from "@/components/ui/button";
 import { RouteDrawer } from "./route-drawer";
 import { SessionInput } from "./session-input";
@@ -79,6 +80,11 @@ export function KlettersteigTab() {
       : activeSession
         ? routes.find((r) => r.id === activeSession.routeId) ?? null
         : null;
+
+  const visibleParking = useMemo(() => {
+    const allIds = new Set(filteredRoutes.flatMap((r) => r.parkingIds ?? []));
+    return getParkingForRoute([...allIds]);
+  }, [filteredRoutes]);
 
   const handleRouteSelect = useCallback(
     (route: KlettersteigRoute) => {
@@ -303,6 +309,7 @@ export function KlettersteigTab() {
           onRouteSelect={handleRouteSelect}
           center={mapCenter}
           zoom={mapZoom}
+          parkingSpots={visibleParking}
         />
       </div>
 
