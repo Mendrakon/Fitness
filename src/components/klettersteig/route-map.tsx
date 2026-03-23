@@ -46,20 +46,29 @@ function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
   return null;
 }
 
+function FlyToLocation({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 0.8 });
+  }, [map, center, zoom]);
+  return null;
+}
+
 interface RouteMapProps {
   routes: KlettersteigRoute[];
   selectedRouteId: string | null;
   onRouteSelect: (route: KlettersteigRoute) => void;
+  center: [number, number];
+  zoom: number;
 }
 
-export function RouteMap({ routes, selectedRouteId, onRouteSelect }: RouteMapProps) {
-  const center: [number, number] = [47.829, 16.039];
+export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom }: RouteMapProps) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null;
 
   return (
     <MapContainer
       center={center}
-      zoom={15}
+      zoom={zoom}
       style={{ height: "100%", width: "100%", borderRadius: "0.5rem" }}
       zoomControl={false}
       attributionControl={false}
@@ -88,6 +97,7 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect }: RouteMapPro
         </Marker>
       ))}
       <FlyToSelected route={selectedRoute} />
+      <FlyToLocation center={center} zoom={zoom} />
     </MapContainer>
   );
 }

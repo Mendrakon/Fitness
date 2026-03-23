@@ -12,6 +12,7 @@ import { useActivityFeed, type FeedVisibility } from "@/hooks/use-activity-feed"
 import { detectKlettersteigPRs } from "@/lib/klettersteig-pr-detection";
 import { detectKlettersteigBadges, BADGE_DEFINITIONS } from "@/lib/klettersteig-badges";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { GEBIRGE_LOCATIONS, GEBIRGE_MAP, getLocationName } from "@/lib/klettersteig-locations";
 import { Button } from "@/components/ui/button";
 import { RouteDrawer } from "./route-drawer";
 import { SessionInput } from "./session-input";
@@ -55,6 +56,22 @@ export function KlettersteigTab() {
 
   const [flow, setFlow] = useState<FlowState>(getInitialState);
   const [summaryNotes, setSummaryNotes] = useState("");
+  const [selectedGebirge, setSelectedGebirge] = useState<string | null>(null);
+
+  const filteredRoutes = useMemo(
+    () => selectedGebirge ? routes.filter((r) => r.locationId === selectedGebirge) : routes,
+    [routes, selectedGebirge]
+  );
+
+  const mapCenter: [number, number] = useMemo(
+    () => selectedGebirge ? GEBIRGE_MAP[selectedGebirge]?.center ?? [47.77, 15.92] : [47.77, 15.92],
+    [selectedGebirge]
+  );
+
+  const mapZoom = useMemo(
+    () => selectedGebirge ? GEBIRGE_MAP[selectedGebirge]?.zoom ?? 11 : 11,
+    [selectedGebirge]
+  );
 
   const selectedRoute =
     flow.step === "drawer" || flow.step === "input"
@@ -144,7 +161,7 @@ export function KlettersteigTab() {
             sessionId: session.id,
             routeName: route?.name ?? "Route",
             routeDifficulty: route?.difficulty ?? "B",
-            locationName: "Hohe Wand",
+            locationName: getLocationName(route?.locationId ?? "hohe-wand"),
             durationSeconds: session.durationSeconds,
             extraWeightKg: session.extraWeightKg,
             weather: session.weather,
@@ -231,7 +248,9 @@ export function KlettersteigTab() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Klettersteig</h1>
-          <p className="text-sm text-muted-foreground">Hohe Wand · {routes.length} Routen</p>
+          <p className="text-sm text-muted-foreground">
+            {selectedGebirge ? getLocationName(selectedGebirge) : "Alle Gebirge"} · {filteredRoutes.length} Routen
+          </p>
         </div>
         <Button variant="outline" size="sm" asChild className="relative mt-1" onClick={markBadgesSeen}>
           <Link href="/klettersteig/challenges">
@@ -245,18 +264,51 @@ export function KlettersteigTab() {
         </Button>
       </div>
 
+      {/* Gebirge Filter */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setSelectedGebirge(null)}
+          className={`whitespace-nowrap text-xs rounded-full px-3 py-1.5 transition-colors ${
+            selectedGebirge === null
+              ? "bg-primary text-primary-foreground font-semibold"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          Alle ({routes.length})
+        </button>
+        {GEBIRGE_LOCATIONS.map((g) => {
+          const count = routes.filter((r) => r.locationId === g.id).length;
+          if (count === 0) return null;
+          return (
+            <button
+              key={g.id}
+              onClick={() => setSelectedGebirge(g.id)}
+              className={`whitespace-nowrap text-xs rounded-full px-3 py-1.5 transition-colors ${
+                selectedGebirge === g.id
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {g.name} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       {/* Map */}
       <div className="h-72 rounded-lg overflow-hidden border border-border">
         <RouteMap
-          routes={routes}
+          routes={filteredRoutes}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteSelect={handleRouteSelect}
+          center={mapCenter}
+          zoom={mapZoom}
         />
       </div>
 
       {/* Route Legend */}
       <div className="flex flex-wrap gap-1.5">
-        {routes.map((r) => (
+        {filteredRoutes.map((r) => (
           <button
             key={r.id}
             onClick={() => handleRouteSelect(r)}

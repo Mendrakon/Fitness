@@ -7,9 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
+import { BADGE_DEFINITIONS } from "@/lib/klettersteig-badges";
 import { use } from "react";
 
 const MUSCLE_GROUPS = [
@@ -53,6 +55,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
   const [draftBio, setDraftBio] = useState("");
   const [savingBio, setSavingBio] = useState(false);
 
+  // Badges state
+  const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>([]);
+
   // Stats editing state
   const [editingStats, setEditingStats] = useState(false);
   const [draftWeight, setDraftWeight] = useState("");
@@ -80,6 +85,15 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
 
       setCurrentUserId(user.id);
       setProfile(profileData as Profile);
+
+      // Fetch earned badges for this profile
+      const { data: badgeData } = await supabase
+        .from("klettersteig_badges")
+        .select("badge_id")
+        .eq("user_id", profileId);
+      if (badgeData) {
+        setEarnedBadgeIds(badgeData.map((b: { badge_id: string }) => b.badge_id));
+      }
 
       if (user.id === profileId) {
         setIsOwnProfile(true);
@@ -465,6 +479,41 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                 )}
               </CardContent>
             </Card>
+
+            {/* Badges */}
+            {earnedBadgeIds.length > 0 && (() => {
+              const earnedSet = new Set(earnedBadgeIds);
+              const earnedBadges = BADGE_DEFINITIONS.filter((d) => earnedSet.has(d.id));
+              return (
+                <Card>
+                  <CardContent className="py-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      Abzeichen ({earnedBadges.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {earnedBadges.map((badge) => (
+                        <Popover key={badge.id}>
+                          <PopoverTrigger asChild>
+                            <button
+                              className="h-9 w-9 flex items-center justify-center rounded-lg text-lg hover:bg-muted transition-colors"
+                              title={badge.name}
+                            >
+                              {badge.emoji}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-3" side="top">
+                            <div className="space-y-1">
+                              <p className="font-semibold text-sm">{badge.emoji} {badge.name}</p>
+                              <p className="text-xs text-muted-foreground">{badge.description}</p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Friendship actions */}
             {!isOwnProfile && (

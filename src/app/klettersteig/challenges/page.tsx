@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { useKlettersteigBadges } from "@/hooks/use-klettersteig-badges";
 import { useKlettersteigSessions } from "@/hooks/use-klettersteig-sessions";
 import { BADGE_DEFINITIONS } from "@/lib/klettersteig-badges";
+import { GEBIRGE_LOCATIONS, getLocationName } from "@/lib/klettersteig-locations";
 import { createClient } from "@/lib/supabase";
 import type { BadgeCategory, KlettersteigBadge } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function ChallengesPage() {
   const { badges, loading: badgesLoading, addBadges } = useKlettersteigBadges();
   const { sessions, loading: sessionsLoading } = useKlettersteigSessions();
   const [activeCategory, setActiveCategory] = useState<BadgeCategory | "all">("all");
+  const [activeGebirge, setActiveGebirge] = useState<string | "all">("all");
 
   // Compute which badges are earned directly from session data (source of truth)
   const earnedFromSessions = useMemo(
@@ -58,13 +60,16 @@ export default function ChallengesPage() {
     });
   }, [badgesLoading, sessionsLoading, sessions, badges, earnedFromSessions, addBadges]);
 
-  const filteredDefs = useMemo(
-    () =>
-      activeCategory === "all"
-        ? BADGE_DEFINITIONS
-        : BADGE_DEFINITIONS.filter((d) => d.category === activeCategory),
-    [activeCategory]
-  );
+  const filteredDefs = useMemo(() => {
+    let defs = BADGE_DEFINITIONS;
+    if (activeCategory !== "all") {
+      defs = defs.filter((d) => d.category === activeCategory);
+    }
+    if (activeGebirge !== "all") {
+      defs = defs.filter((d) => d.gebirge === activeGebirge || !d.gebirge);
+    }
+    return defs;
+  }, [activeCategory, activeGebirge]);
 
   const loading = badgesLoading || sessionsLoading;
 
@@ -91,22 +96,49 @@ export default function ChallengesPage() {
             <span className="text-4xl">🏅</span>
             <div className="flex-1">
               <div className="font-bold text-lg">
-                {earnedFromSessions.size}{" "}
+                {filteredDefs.filter((d) => earnedFromSessions.has(d.id)).length}{" "}
                 <span className="text-muted-foreground font-normal text-sm">
-                  von {BADGE_DEFINITIONS.length} freigeschaltet
+                  von {filteredDefs.length} freigeschaltet
                 </span>
               </div>
               <div className="mt-2 h-2 bg-background rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${(earnedFromSessions.size / BADGE_DEFINITIONS.length) * 100}%` }}
+                  style={{ width: `${filteredDefs.length > 0 ? (filteredDefs.filter((d) => earnedFromSessions.has(d.id)).length / filteredDefs.length) * 100 : 0}%` }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Filter chips */}
+          {/* Gebirge filter */}
           <div className="flex gap-2 px-4 mt-4 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveGebirge("all")}
+              className={`whitespace-nowrap text-xs rounded-full px-3 py-1.5 transition-colors ${
+                activeGebirge === "all"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              Alle Gebirge
+            </button>
+            {GEBIRGE_LOCATIONS.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => setActiveGebirge(g.id)}
+                className={`whitespace-nowrap text-xs rounded-full px-3 py-1.5 transition-colors ${
+                  activeGebirge === g.id
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Category filter chips */}
+          <div className="flex gap-2 px-4 mt-2 overflow-x-auto no-scrollbar">
             {CATEGORIES.map((cat) => {
               const count =
                 cat === "all"

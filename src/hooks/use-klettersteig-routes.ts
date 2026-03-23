@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
-import { HOHE_WAND_ROUTES } from "@/lib/klettersteig-routes";
+import { ALL_KLETTERSTEIG_ROUTES } from "@/lib/klettersteig-routes";
 import type { KlettersteigRoute } from "@/lib/types";
 
 type DbRoute = {
@@ -30,7 +30,7 @@ function toRoute(row: DbRoute): KlettersteigRoute {
 }
 
 export function useKlettersteigRoutes() {
-  const [routes, setRoutes] = useState<KlettersteigRoute[]>(HOHE_WAND_ROUTES);
+  const [routes, setRoutes] = useState<KlettersteigRoute[]>(ALL_KLETTERSTEIG_ROUTES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,5 +54,10 @@ export function useKlettersteigRoutes() {
     [routes]
   );
 
-  return { routes, loading, getById, getByLocation };
+  const locationIds = useMemo(
+    () => [...new Set(routes.map((r) => r.locationId))],
+    [routes]
+  );
+
+  return { routes, loading, getById, getByLocation, locationIds };
 }

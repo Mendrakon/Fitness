@@ -6,6 +6,7 @@ export interface BadgeDefinition {
   description: string;
   emoji: string;
   category: BadgeCategory;
+  gebirge?: string;
   check: (sessions: KlettersteigSession[]) => boolean;
   progress: (sessions: KlettersteigSession[]) => { current: number; max: number; hint: string } | null;
 }
@@ -23,9 +24,11 @@ const bestTimeForRoute = (sessions: KlettersteigSession[], routeId: string): num
   return times.length > 0 ? Math.min(...times) : null;
 };
 
-const B_ROUTE_IDS = ["hohe-wand-gebirgsvereinssteig", "hohe-wand-guenther-schlesinger"];
-const C_ROUTE_IDS = ["hohe-wand-wildenauersteig", "hohe-wand-voellerin-steig", "hohe-wand-steirerspur"];
-const ALL_ROUTE_IDS = [
+// ── Hohe Wand Route IDs ───────────────────────────────────────────────────────
+
+const HW_B_ROUTE_IDS = ["hohe-wand-gebirgsvereinssteig", "hohe-wand-guenther-schlesinger"];
+const HW_C_ROUTE_IDS = ["hohe-wand-wildenauersteig", "hohe-wand-voellerin-steig", "hohe-wand-steirerspur"];
+const HW_ALL_ROUTE_IDS = [
   "hohe-wand-steirerspur",
   "hohe-wand-hanselsteig",
   "hohe-wand-wildenauersteig",
@@ -37,30 +40,75 @@ const ALL_ROUTE_IDS = [
   "hohe-wand-springlessteig",
 ];
 
+// ── Rax Route IDs ─────────────────────────────────────────────────────────────
+
+const RAX_ALL_ROUTE_IDS = [
+  "rax-haidsteig",
+  "rax-koenigsschusswandsteig",
+  "rax-preinerwandsteig",
+  "rax-bismarcksteig",
+  "rax-wachthuettelkamm",
+  "rax-gaislochsteig",
+  "rax-rudolfsteig",
+];
+
+// ── Schneeberg Route IDs ──────────────────────────────────────────────────────
+
+const SB_ALL_ROUTE_IDS = [
+  "schneeberg-av-steig",
+  "schneeberg-nandlgrat",
+  "schneeberg-weichtalklamm",
+];
+
+// ── Alle Route IDs ────────────────────────────────────────────────────────────
+
+const EVERY_ROUTE_ID = [...HW_ALL_ROUTE_IDS, ...RAX_ALL_ROUTE_IDS, ...SB_ALL_ROUTE_IDS];
+
+function getGebirgeFromRouteId(routeId: string): string {
+  if (routeId.startsWith("hohe-wand-")) return "hohe-wand";
+  if (routeId.startsWith("rax-")) return "rax";
+  if (routeId.startsWith("schneeberg-")) return "schneeberg";
+  return "unknown";
+}
+
+function uniqueGebirge(sessions: KlettersteigSession[]): Set<string> {
+  return new Set(completedSessions(sessions).map((s) => getGebirgeFromRouteId(s.routeId)));
+}
+
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── HOHE WAND ─────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+
   // ── Routen-Sammler ────────────────────────────────────────────────────────
   {
     id: "route-rookie",
     name: "Hohe Wand Rookie",
-    description: "Erste Route überhaupt absolviert",
+    description: "Erste Hohe Wand Route absolviert",
     emoji: "🥾",
     category: "routen",
-    check: (sessions) => completedSessions(sessions).length > 0,
+    gebirge: "hohe-wand",
+    check: (sessions) => completedSessions(sessions).some((s) => s.routeId.startsWith("hohe-wand-")),
     progress: (sessions) => {
-      const count = Math.min(completedSessions(sessions).length, 1);
-      return { current: count, max: 1, hint: "Erste Route absolvieren" };
+      const count = completedSessions(sessions).filter((s) => s.routeId.startsWith("hohe-wand-")).length > 0 ? 1 : 0;
+      return { current: count, max: 1, hint: "Erste Hohe Wand Route absolvieren" };
     },
   },
   {
     id: "route-explorer",
     name: "Hohe Wand Entdecker",
-    description: "5 verschiedene Routen absolviert",
+    description: "5 verschiedene Hohe Wand Routen absolviert",
     emoji: "🗺️",
     category: "routen",
-    check: (sessions) => uniqueRoutes(sessions).size >= 5,
+    gebirge: "hohe-wand",
+    check: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      return HW_ALL_ROUTE_IDS.filter((id) => done.has(id)).length >= 5;
+    },
     progress: (sessions) => {
-      const count = Math.min(uniqueRoutes(sessions).size, 5);
-      return { current: count, max: 5, hint: `${count} von 5 verschiedenen Routen absolviert` };
+      const done = uniqueRoutes(sessions);
+      const count = Math.min(HW_ALL_ROUTE_IDS.filter((id) => done.has(id)).length, 5);
+      return { current: count, max: 5, hint: `${count} von 5 verschiedenen Hohe Wand Routen absolviert` };
     },
   },
   {
@@ -69,56 +117,60 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Alle 9 Routen der Hohe Wand absolviert",
     emoji: "🏔️",
     category: "routen",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const done = uniqueRoutes(sessions);
-      return ALL_ROUTE_IDS.every((id) => done.has(id));
+      return HW_ALL_ROUTE_IDS.every((id) => done.has(id));
     },
     progress: (sessions) => {
       const done = uniqueRoutes(sessions);
-      const count = ALL_ROUTE_IDS.filter((id) => done.has(id)).length;
+      const count = HW_ALL_ROUTE_IDS.filter((id) => done.has(id)).length;
       return { current: count, max: 9, hint: `${count} von 9 Routen absolviert` };
     },
   },
   {
     id: "difficulty-b",
     name: "B-Routen Meister",
-    description: "Alle B-Schwierigkeitsrouten absolviert",
+    description: "Alle B-Schwierigkeitsrouten der Hohe Wand absolviert",
     emoji: "⭐",
     category: "routen",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const done = uniqueRoutes(sessions);
-      return B_ROUTE_IDS.every((id) => done.has(id));
+      return HW_B_ROUTE_IDS.every((id) => done.has(id));
     },
     progress: (sessions) => {
       const done = uniqueRoutes(sessions);
-      const count = B_ROUTE_IDS.filter((id) => done.has(id)).length;
-      return { current: count, max: B_ROUTE_IDS.length, hint: `${count} von ${B_ROUTE_IDS.length} B-Routen absolviert` };
+      const count = HW_B_ROUTE_IDS.filter((id) => done.has(id)).length;
+      return { current: count, max: HW_B_ROUTE_IDS.length, hint: `${count} von ${HW_B_ROUTE_IDS.length} B-Routen absolviert` };
     },
   },
   {
     id: "difficulty-c",
     name: "C-Routen Meister",
-    description: "Alle C/C/D-Routen absolviert",
+    description: "Alle C/C/D-Routen der Hohe Wand absolviert",
     emoji: "⭐⭐",
     category: "routen",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const done = uniqueRoutes(sessions);
-      return C_ROUTE_IDS.every((id) => done.has(id));
+      return HW_C_ROUTE_IDS.every((id) => done.has(id));
     },
     progress: (sessions) => {
       const done = uniqueRoutes(sessions);
-      const count = C_ROUTE_IDS.filter((id) => done.has(id)).length;
-      return { current: count, max: C_ROUTE_IDS.length, hint: `${count} von ${C_ROUTE_IDS.length} C-Routen absolviert` };
+      const count = HW_C_ROUTE_IDS.filter((id) => done.has(id)).length;
+      return { current: count, max: HW_C_ROUTE_IDS.length, hint: `${count} von ${HW_C_ROUTE_IDS.length} C-Routen absolviert` };
     },
   },
 
-  // ── Speed ─────────────────────────────────────────────────────────────────
+  // ── Speed (Hohe Wand) ───────────────────────────────────────────────────────
   {
     id: "speed-hansel-i",
     name: "Hanselsteig Speedrunner I",
     description: "Hanselsteig in unter 45 Minuten",
     emoji: "⚡",
     category: "speed",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const best = bestTimeForRoute(sessions, "hohe-wand-hanselsteig");
       return best !== null && best < 45 * 60;
@@ -137,6 +189,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Hanselsteig in unter 30 Minuten",
     emoji: "⚡⚡",
     category: "speed",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const best = bestTimeForRoute(sessions, "hohe-wand-hanselsteig");
       return best !== null && best < 30 * 60;
@@ -155,6 +208,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Steirerspur in unter 70 Minuten",
     emoji: "🔥",
     category: "speed",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       const best = bestTimeForRoute(sessions, "hohe-wand-steirerspur");
       return best !== null && best < 70 * 60;
@@ -173,6 +227,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Wildenauersteig oder Völlerin-Steig in unter 55 Minuten",
     emoji: "⚡",
     category: "speed",
+    gebirge: "hohe-wand",
     check: (sessions) => {
       return ["hohe-wand-wildenauersteig", "hohe-wand-voellerin-steig"].some((routeId) => {
         const best = bestTimeForRoute(sessions, routeId);
@@ -198,6 +253,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Eine Route mit mindestens 10 kg Zusatzgewicht absolviert",
     emoji: "🎒",
     category: "gewicht",
+    gebirge: "hohe-wand",
     check: (sessions) => completedSessions(sessions).some((s) => s.extraWeightKg >= 10),
     progress: (sessions) => {
       const max = Math.max(0, ...completedSessions(sessions).map((s) => s.extraWeightKg));
@@ -211,6 +267,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Eine Route mit mindestens 15 kg Zusatzgewicht absolviert",
     emoji: "🏋️",
     category: "gewicht",
+    gebirge: "hohe-wand",
     check: (sessions) => completedSessions(sessions).some((s) => s.extraWeightKg >= 15),
     progress: (sessions) => {
       const max = Math.max(0, ...completedSessions(sessions).map((s) => s.extraWeightKg));
@@ -224,6 +281,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Eine Route mit mindestens 20 kg Zusatzgewicht absolviert",
     emoji: "🦾",
     category: "gewicht",
+    gebirge: "hohe-wand",
     check: (sessions) => completedSessions(sessions).some((s) => s.extraWeightKg >= 20),
     progress: (sessions) => {
       const max = Math.max(0, ...completedSessions(sessions).map((s) => s.extraWeightKg));
@@ -232,13 +290,14 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     },
   },
 
-  // ── Kombi ─────────────────────────────────────────────────────────────────
+  // ── Kombi (Hohe Wand) ──────────────────────────────────────────────────────
   {
     id: "kombi-hanselsteig",
     name: "Eisenmann",
     description: "Hanselsteig unter 40 Minuten mit ≥10 kg Zusatzgewicht",
     emoji: "🔥",
     category: "kombi",
+    gebirge: "hohe-wand",
     check: (sessions) =>
       completedSessions(sessions).some(
         (s) => s.routeId === "hohe-wand-hanselsteig" && s.durationSeconds < 40 * 60 && s.extraWeightKg >= 10
@@ -265,6 +324,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: "Steirerspur unter 75 Minuten mit ≥5 kg Zusatzgewicht",
     emoji: "🏋️",
     category: "kombi",
+    gebirge: "hohe-wand",
     check: (sessions) =>
       completedSessions(sessions).some(
         (s) => s.routeId === "hohe-wand-steirerspur" && s.durationSeconds < 75 * 60 && s.extraWeightKg >= 5
@@ -283,6 +343,189 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
       if (best < 75 * 60) return null;
       const mins = Math.ceil((best - 75 * 60) / 60);
       return { current: Math.max(0, 75 * 60 - best), max: 75 * 60, hint: `Bestzeit mit ≥5 kg: ${Math.floor(best / 60)} Min — noch ${mins} Min zu verbessern` };
+    },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── RAX ───────────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // ── Routen (Rax) ──────────────────────────────────────────────────────────
+  {
+    id: "rax-rookie",
+    name: "Rax Rookie",
+    description: "Erste Rax-Route absolviert",
+    emoji: "🥾",
+    category: "routen",
+    gebirge: "rax",
+    check: (sessions) => completedSessions(sessions).some((s) => s.routeId.startsWith("rax-")),
+    progress: (sessions) => {
+      const count = completedSessions(sessions).filter((s) => s.routeId.startsWith("rax-")).length > 0 ? 1 : 0;
+      return { current: count, max: 1, hint: "Erste Rax-Route absolvieren" };
+    },
+  },
+  {
+    id: "rax-explorer",
+    name: "Rax Entdecker",
+    description: "4 verschiedene Rax-Routen absolviert",
+    emoji: "🗺️",
+    category: "routen",
+    gebirge: "rax",
+    check: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      return RAX_ALL_ROUTE_IDS.filter((id) => done.has(id)).length >= 4;
+    },
+    progress: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      const count = Math.min(RAX_ALL_ROUTE_IDS.filter((id) => done.has(id)).length, 4);
+      return { current: count, max: 4, hint: `${count} von 4 verschiedenen Rax-Routen absolviert` };
+    },
+  },
+  {
+    id: "rax-completer",
+    name: "Rax Komplettierer",
+    description: "Alle 7 Routen der Rax absolviert",
+    emoji: "🏔️",
+    category: "routen",
+    gebirge: "rax",
+    check: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      return RAX_ALL_ROUTE_IDS.every((id) => done.has(id));
+    },
+    progress: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      const count = RAX_ALL_ROUTE_IDS.filter((id) => done.has(id)).length;
+      return { current: count, max: 7, hint: `${count} von 7 Rax-Routen absolviert` };
+    },
+  },
+
+  // ── Speed (Rax) ───────────────────────────────────────────────────────────
+  {
+    id: "speed-haidsteig",
+    name: "Haidsteig Speedrunner",
+    description: "Haidsteig in unter 90 Minuten",
+    emoji: "⚡",
+    category: "speed",
+    gebirge: "rax",
+    check: (sessions) => {
+      const best = bestTimeForRoute(sessions, "rax-haidsteig");
+      return best !== null && best < 90 * 60;
+    },
+    progress: (sessions) => {
+      const best = bestTimeForRoute(sessions, "rax-haidsteig");
+      if (best === null) return { current: 0, max: 1, hint: "Haidsteig noch nicht absolviert" };
+      if (best < 90 * 60) return null;
+      const mins = Math.ceil((best - 90 * 60) / 60);
+      return { current: Math.max(0, 90 * 60 - best), max: 90 * 60, hint: `Bestzeit: ${Math.floor(best / 60)} Min — noch ${mins} Min zu verbessern` };
+    },
+  },
+  {
+    id: "speed-preinerwand",
+    name: "Preinerwandsteig Sprinter",
+    description: "Preinerwandsteig in unter 60 Minuten",
+    emoji: "⚡",
+    category: "speed",
+    gebirge: "rax",
+    check: (sessions) => {
+      const best = bestTimeForRoute(sessions, "rax-preinerwandsteig");
+      return best !== null && best < 60 * 60;
+    },
+    progress: (sessions) => {
+      const best = bestTimeForRoute(sessions, "rax-preinerwandsteig");
+      if (best === null) return { current: 0, max: 1, hint: "Preinerwandsteig noch nicht absolviert" };
+      if (best < 60 * 60) return null;
+      const mins = Math.ceil((best - 60 * 60) / 60);
+      return { current: Math.max(0, 60 * 60 - best), max: 60 * 60, hint: `Bestzeit: ${Math.floor(best / 60)} Min — noch ${mins} Min zu verbessern` };
+    },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── SCHNEEBERG ────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // ── Routen (Schneeberg) ───────────────────────────────────────────────────
+  {
+    id: "schneeberg-rookie",
+    name: "Schneeberg Rookie",
+    description: "Erste Schneeberg-Route absolviert",
+    emoji: "🥾",
+    category: "routen",
+    gebirge: "schneeberg",
+    check: (sessions) => completedSessions(sessions).some((s) => s.routeId.startsWith("schneeberg-")),
+    progress: (sessions) => {
+      const count = completedSessions(sessions).filter((s) => s.routeId.startsWith("schneeberg-")).length > 0 ? 1 : 0;
+      return { current: count, max: 1, hint: "Erste Schneeberg-Route absolvieren" };
+    },
+  },
+  {
+    id: "schneeberg-completer",
+    name: "Schneeberg Komplettierer",
+    description: "Alle 3 Routen des Schneeberg absolviert",
+    emoji: "🏔️",
+    category: "routen",
+    gebirge: "schneeberg",
+    check: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      return SB_ALL_ROUTE_IDS.every((id) => done.has(id));
+    },
+    progress: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      const count = SB_ALL_ROUTE_IDS.filter((id) => done.has(id)).length;
+      return { current: count, max: 3, hint: `${count} von 3 Schneeberg-Routen absolviert` };
+    },
+  },
+
+  // ── Speed (Schneeberg) ────────────────────────────────────────────────────
+  {
+    id: "speed-nandlgrat",
+    name: "Nandlgrat Speedrunner",
+    description: "Nandlgrat in unter 80 Minuten",
+    emoji: "⚡",
+    category: "speed",
+    gebirge: "schneeberg",
+    check: (sessions) => {
+      const best = bestTimeForRoute(sessions, "schneeberg-nandlgrat");
+      return best !== null && best < 80 * 60;
+    },
+    progress: (sessions) => {
+      const best = bestTimeForRoute(sessions, "schneeberg-nandlgrat");
+      if (best === null) return { current: 0, max: 1, hint: "Nandlgrat noch nicht absolviert" };
+      if (best < 80 * 60) return null;
+      const mins = Math.ceil((best - 80 * 60) / 60);
+      return { current: Math.max(0, 80 * 60 - best), max: 80 * 60, hint: `Bestzeit: ${Math.floor(best / 60)} Min — noch ${mins} Min zu verbessern` };
+    },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ── ÜBERGREIFEND ──────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  {
+    id: "gebirge-wanderer",
+    name: "Gebirgswanderer",
+    description: "Mindestens eine Route in 3 verschiedenen Gebirgen absolviert",
+    emoji: "🌄",
+    category: "routen",
+    check: (sessions) => uniqueGebirge(sessions).size >= 3,
+    progress: (sessions) => {
+      const count = uniqueGebirge(sessions).size;
+      return { current: count, max: 3, hint: `${count} von 3 Gebirgen besucht` };
+    },
+  },
+  {
+    id: "alpen-meister",
+    name: "Alpen-Meister",
+    description: "Alle 19 Routen aller Gebirge absolviert",
+    emoji: "👑",
+    category: "routen",
+    check: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      return EVERY_ROUTE_ID.every((id) => done.has(id));
+    },
+    progress: (sessions) => {
+      const done = uniqueRoutes(sessions);
+      const count = EVERY_ROUTE_ID.filter((id) => done.has(id)).length;
+      return { current: count, max: 19, hint: `${count} von 19 Routen aller Gebirge absolviert` };
     },
   },
 ];

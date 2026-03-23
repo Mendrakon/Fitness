@@ -1,5 +1,7 @@
 import type { KlettersteigRoute } from "./types";
 
+// ── Hohe Wand ─────────────────────────────────────────────────────────────────
+
 export const HOHE_WAND_ROUTES: KlettersteigRoute[] = [
   {
     id: "hohe-wand-steirerspur",
@@ -91,4 +93,122 @@ export const HOHE_WAND_ROUTES: KlettersteigRoute[] = [
     elevationGain: 190,
     description: "Einsteigerfreundlich",
   },
+];
+
+// ── Rax ───────────────────────────────────────────────────────────────────────
+
+export const RAX_ROUTES: KlettersteigRoute[] = [
+  {
+    id: "rax-haidsteig",
+    locationId: "rax",
+    name: "Haidsteig",
+    difficulty: "C/D",
+    latitude: 47.6875,
+    longitude: 15.7650,
+    elevationGain: 550,
+    description: "Anspruchsvoll, alpiner Klassiker",
+  },
+  {
+    id: "rax-koenigsschusswandsteig",
+    locationId: "rax",
+    name: "Königsschusswandsteig",
+    difficulty: "D/E",
+    latitude: 47.6860,
+    longitude: 15.7620,
+    elevationGain: 380,
+    description: "Sehr schwer, nur für Erfahrene",
+  },
+  {
+    id: "rax-preinerwandsteig",
+    locationId: "rax",
+    name: "Preinerwandsteig",
+    difficulty: "A/B",
+    latitude: 47.6830,
+    longitude: 15.7700,
+    elevationGain: 450,
+    description: "Moderat, tolle Aussicht",
+  },
+  {
+    id: "rax-bismarcksteig",
+    locationId: "rax",
+    name: "Bismarcksteig",
+    difficulty: "A",
+    latitude: 47.6900,
+    longitude: 15.7580,
+    elevationGain: 400,
+    description: "Leicht, ideal zum Einstieg",
+  },
+  {
+    id: "rax-wachthuettelkamm",
+    locationId: "rax",
+    name: "Wachthüttelkamm",
+    difficulty: "B",
+    latitude: 47.6850,
+    longitude: 15.7630,
+    elevationGain: 480,
+    description: "Moderat, abwechslungsreich",
+  },
+  {
+    id: "rax-gaislochsteig",
+    locationId: "rax",
+    name: "Gaislochsteig",
+    difficulty: "A/B",
+    latitude: 47.6880,
+    longitude: 15.7710,
+    elevationGain: 420,
+    description: "Einsteigerfreundlich",
+  },
+  {
+    id: "rax-rudolfsteig",
+    locationId: "rax",
+    name: "Rudolfsteig",
+    difficulty: "B",
+    latitude: 47.6920,
+    longitude: 15.7600,
+    elevationGain: 460,
+    description: "Moderat, historischer Steig",
+  },
+];
+
+// ── Schneeberg ────────────────────────────────────────────────────────────────
+
+export const SCHNEEBERG_ROUTES: KlettersteigRoute[] = [
+  {
+    id: "schneeberg-av-steig",
+    locationId: "schneeberg",
+    name: "AV-Steig",
+    difficulty: "B/C",
+    latitude: 47.7700,
+    longitude: 15.8100,
+    elevationGain: 500,
+    description: "Mittelschwer, alpin",
+  },
+  {
+    id: "schneeberg-nandlgrat",
+    locationId: "schneeberg",
+    name: "Nandlgrat",
+    difficulty: "C",
+    latitude: 47.7650,
+    longitude: 15.8050,
+    elevationGain: 600,
+    description: "Anspruchsvoll, exponiert",
+  },
+  {
+    id: "schneeberg-weichtalklamm",
+    locationId: "schneeberg",
+    name: "Weichtalklamm",
+    difficulty: "A",
+    latitude: 47.7720,
+    longitude: 15.8150,
+    elevationGain: 350,
+    description: "Leicht, durch die Klamm",
+  },
+];
+
+// ── Alle Routen ───────────────────────────────────────────────────────────────
+
+export const ALL_KLETTERSTEIG_ROUTES: KlettersteigRoute[] = [
+  ...HOHE_WAND_ROUTES,
+  ...RAX_ROUTES,
+  ...SCHNEEBERG_ROUTES,
 ];

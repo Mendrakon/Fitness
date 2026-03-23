@@ -9,6 +9,7 @@ import {
   formatKlettersteigTime,
 } from "@/lib/types";
 import type { KlettersteigRoute, KlettersteigSession } from "@/lib/types";
+import { getLocationName } from "@/lib/klettersteig-locations";
 import { cn } from "@/lib/utils";
 
 interface RouteDrawerProps {
@@ -52,7 +53,7 @@ export function RouteDrawer({
             <div>
               <DrawerTitle>{route.name}</DrawerTitle>
               <p className="text-xs text-muted-foreground">
-                Hohe Wand{route.elevationGain ? ` · ${route.elevationGain} Hm` : ""}
+                {getLocationName(route.locationId)}{route.elevationGain ? ` · ${route.elevationGain} Hm` : ""}
               </p>
             </div>
           </div>
