@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 import type { Workout } from "@/lib/types";
 
 type DbWorkout = {
@@ -39,6 +40,31 @@ function toRow(workout: Workout, userId: string) {
   };
 }
 
+function getPendingWorkouts(): Workout[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PENDING_WORKOUTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addToPending(workout: Workout) {
+  const pending = getPendingWorkouts();
+  const exists = pending.some(w => w.id === workout.id);
+  if (!exists) {
+    localStorage.setItem(
+      STORAGE_KEYS.PENDING_WORKOUTS,
+      JSON.stringify([...pending, workout])
+    );
+  }
+}
+
+function removeFromPending(id: string) {
+  const pending = getPendingWorkouts().filter(w => w.id !== id);
+  localStorage.setItem(STORAGE_KEYS.PENDING_WORKOUTS, JSON.stringify(pending));
+}
+
 export function useWorkouts() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +73,38 @@ export function useWorkouts() {
     const client = createClient();
     client.auth.getUser().then(({ data: { user } }) => {
       if (!user) { setLoading(false); return; }
+
       client
         .from("workouts")
         .select("*")
         .order("start_time", { ascending: false })
-        .then(({ data }) => {
-          if (data) setWorkouts(data.map(toWorkout));
+        .then(async ({ data }) => {
+          const fromDb: Workout[] = data ? data.map(toWorkout) : [];
+
+          // Sync any workouts that were saved offline
+          const pending = getPendingWorkouts();
+          if (pending.length > 0) {
+            const synced: string[] = [];
+            for (const workout of pending) {
+              const { error } = await client
+                .from("workouts")
+                .upsert(toRow(workout, user.id));
+              if (!error) {
+                synced.push(workout.id);
+              }
+            }
+            synced.forEach(removeFromPending);
+
+            // Remaining pending = workouts that still couldn't be synced
+            const dbIds = new Set(fromDb.map(w => w.id));
+            const remainingPending = getPendingWorkouts();
+            const offlineOnly = remainingPending.filter(w => !dbIds.has(w.id));
+
+            setWorkouts([...offlineOnly, ...fromDb]);
+          } else {
+            setWorkouts(fromDb);
+          }
+
           setLoading(false);
         });
     });
@@ -65,17 +117,25 @@ export function useWorkouts() {
 
   const save = useCallback(
     async (workout: Workout) => {
-      const client = createClient();
-      const { data: { user } } = await client.auth.getUser();
-      if (!user) return;
-
-      await client.from("workouts").upsert(toRow(workout, user.id));
-
+      // Update local state immediately (works offline too)
       setWorkouts(prev => {
         const exists = prev.find(w => w.id === workout.id);
         if (exists) return prev.map(w => (w.id === workout.id ? workout : w));
         return [workout, ...prev];
       });
+
+      const client = createClient();
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+
+      const { error } = await client
+        .from("workouts")
+        .upsert(toRow(workout, user.id));
+
+      if (error) {
+        // Offline or error: queue for later sync
+        addToPending(workout);
+      }
     },
     []
   );
@@ -84,6 +144,7 @@ export function useWorkouts() {
     async (id: string) => {
       const client = createClient();
       await client.from("workouts").delete().eq("id", id);
+      removeFromPending(id);
       setWorkouts(prev => prev.filter(w => w.id !== id));
     },
     []

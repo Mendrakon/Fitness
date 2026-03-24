@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   MEASUREMENTS: "fitness-measurements",
   SETTINGS: "fitness-settings",
   PR_EVENTS: "fitness-pr-events",
+  PENDING_WORKOUTS: "fitness-pending-workouts",
   ACTIVE_KLETTERSTEIG_SESSION: "fitness-active-klettersteig-session",
   KLETTERSTEIG_ELAPSED: "fitness-klettersteig-elapsed",
   KLETTERSTEIG_SEEN_BADGES: "fitness-klettersteig-seen-badges",

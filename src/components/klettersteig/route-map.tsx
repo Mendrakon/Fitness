@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import type { KlettersteigRoute, KlettersteigDifficulty } from "@/lib/types";
+import type { KlettersteigRoute, KlettersteigDifficulty, KlettersteigParking } from "@/lib/types";
 
 import "leaflet/dist/leaflet.css";
 
@@ -40,40 +40,15 @@ function createParkingIcon() {
   return L.divIcon({
     className: "",
     html: `<div style="
-      width:18px;height:18px;border-radius:3px;
+      width:20px;height:20px;border-radius:4px;
       background:#3b82f6;border:2px solid white;
       box-shadow:0 1px 4px rgba(0,0,0,0.4);
-      display:flex;align-items:center;justify-content:center;
-      font-size:11px;font-weight:bold;color:white;line-height:1;
+      color:white;font-weight:bold;font-size:11px;
+      line-height:20px;text-align:center;
     ">P</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
   });
-}
-
-function FitToRoutes({
-  routes,
-  parkingPositions,
-}: {
-  routes: KlettersteigRoute[];
-  parkingPositions: [number, number][];
-}) {
-  const map = useMap();
-  useEffect(() => {
-    if (routes.length === 0) return;
-    const center: [number, number] = [
-      routes.reduce((s, r) => s + r.latitude, 0) / routes.length,
-      routes.reduce((s, r) => s + r.longitude, 0) / routes.length,
-    ];
-    const allPositions: [number, number][] = [
-      ...routes.map((r): [number, number] => [r.latitude, r.longitude]),
-      ...parkingPositions,
-    ];
-    const bounds = L.latLngBounds(allPositions);
-    const zoom = Math.max(13, map.getBoundsZoom(bounds, false, L.point(40, 40)));
-    map.setView(center, Math.min(zoom, 15));
-  }, [map, routes, parkingPositions]);
-  return null;
 }
 
 function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
@@ -86,42 +61,30 @@ function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
   return null;
 }
 
+function FlyToLocation({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 0.8 });
+  }, [map, center, zoom]);
+  return null;
+}
+
 interface RouteMapProps {
   routes: KlettersteigRoute[];
   selectedRouteId: string | null;
   onRouteSelect: (route: KlettersteigRoute) => void;
-  showParking: boolean;
+  center: [number, number];
+  zoom: number;
+  parkingSpots?: KlettersteigParking[];
 }
 
-export function RouteMap({ routes, selectedRouteId, onRouteSelect, showParking }: RouteMapProps) {
-  const center: [number, number] = routes.length > 0
-    ? [
-        routes.reduce((s, r) => s + r.latitude, 0) / routes.length,
-        routes.reduce((s, r) => s + r.longitude, 0) / routes.length,
-      ]
-    : [47.829, 16.039];
+export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom, parkingSpots = [] }: RouteMapProps) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null;
-
-  // Deduplizierte Parkplatz-Positionen (mehrere Routen können denselben Parkplatz teilen)
-  const parkingPositions = useMemo<[number, number][]>(() => {
-    if (!showParking) return [];
-    const seen = new Set<string>();
-    const result: [number, number][] = [];
-    for (const r of routes) {
-      if (r.parkingLatitude == null || r.parkingLongitude == null) continue;
-      const key = `${r.parkingLatitude},${r.parkingLongitude}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push([r.parkingLatitude, r.parkingLongitude]);
-      }
-    }
-    return result;
-  }, [routes, showParking]);
 
   return (
     <MapContainer
       center={center}
-      zoom={15}
+      zoom={zoom}
       style={{ height: "100%", width: "100%", borderRadius: "0.5rem" }}
       zoomControl={false}
       attributionControl={false}
@@ -149,40 +112,36 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect, showParking }
           </Popup>
         </Marker>
       ))}
-      {showParking && parkingPositions.map(([lat, lng]) => (
+      {parkingSpots.map((p) => (
         <Marker
-          key={`parking-${lat}-${lng}`}
-          position={[lat, lng]}
+          key={p.id}
+          position={[p.latitude, p.longitude]}
           icon={createParkingIcon()}
         >
           <Popup>
-            <div style={{ fontFamily: "inherit", textAlign: "center" }}>
-              <strong>Parkplatz</strong>
+            <div style={{ fontFamily: "inherit", minWidth: 140 }}>
+              <strong>P {p.name}</strong>
+              {p.description && (
+                <>
+                  <br />
+                  <span style={{ fontSize: 11 }}>{p.description}</span>
+                </>
+              )}
               <br />
               <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  display: "inline-block",
-                  marginTop: 4,
-                  padding: "4px 10px",
-                  background: "#3b82f6",
-                  color: "white",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
+                style={{ color: "#3b82f6", fontSize: 12 }}
               >
-                Navigieren
+                Navigation starten
               </a>
             </div>
           </Popup>
         </Marker>
       ))}
-      <FitToRoutes routes={routes} parkingPositions={parkingPositions} />
       <FlyToSelected route={selectedRoute} />
+      <FlyToLocation center={center} zoom={zoom} />
     </MapContainer>
   );
 }

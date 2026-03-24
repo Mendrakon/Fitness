@@ -17,6 +17,7 @@ import {
   formatKlettersteigPRDiff,
 } from "@/lib/types";
 import type { KlettersteigPRMetric } from "@/lib/types";
+import { getLocationName } from "@/lib/klettersteig-locations";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -107,7 +108,7 @@ export default function KlettersteigRouteDetailPage() {
           <div>
             <h1 className="text-xl font-bold">{route.name}</h1>
             <p className="text-xs text-muted-foreground">
-              Hohe Wand{route.elevationGain ? ` · ${route.elevationGain} Hm` : ""}
+              {getLocationName(route.locationId)}{route.elevationGain ? ` · ${route.elevationGain} Hm` : ""}
             </p>
           </div>
         </div>
