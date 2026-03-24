@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { KlettersteigRoute, KlettersteigDifficulty } from "@/lib/types";
@@ -36,6 +36,46 @@ function createIcon(difficulty: KlettersteigDifficulty, isSelected: boolean) {
   });
 }
 
+function createParkingIcon() {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:18px;height:18px;border-radius:3px;
+      background:#3b82f6;border:2px solid white;
+      box-shadow:0 1px 4px rgba(0,0,0,0.4);
+      display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:bold;color:white;line-height:1;
+    ">P</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+function FitToRoutes({
+  routes,
+  parkingPositions,
+}: {
+  routes: KlettersteigRoute[];
+  parkingPositions: [number, number][];
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (routes.length === 0) return;
+    const center: [number, number] = [
+      routes.reduce((s, r) => s + r.latitude, 0) / routes.length,
+      routes.reduce((s, r) => s + r.longitude, 0) / routes.length,
+    ];
+    const allPositions: [number, number][] = [
+      ...routes.map((r): [number, number] => [r.latitude, r.longitude]),
+      ...parkingPositions,
+    ];
+    const bounds = L.latLngBounds(allPositions);
+    const zoom = Math.max(13, map.getBoundsZoom(bounds, false, L.point(40, 40)));
+    map.setView(center, Math.min(zoom, 15));
+  }, [map, routes, parkingPositions]);
+  return null;
+}
+
 function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
   const map = useMap();
   useEffect(() => {
@@ -50,11 +90,33 @@ interface RouteMapProps {
   routes: KlettersteigRoute[];
   selectedRouteId: string | null;
   onRouteSelect: (route: KlettersteigRoute) => void;
+  showParking: boolean;
 }
 
-export function RouteMap({ routes, selectedRouteId, onRouteSelect }: RouteMapProps) {
-  const center: [number, number] = [47.829, 16.039];
+export function RouteMap({ routes, selectedRouteId, onRouteSelect, showParking }: RouteMapProps) {
+  const center: [number, number] = routes.length > 0
+    ? [
+        routes.reduce((s, r) => s + r.latitude, 0) / routes.length,
+        routes.reduce((s, r) => s + r.longitude, 0) / routes.length,
+      ]
+    : [47.829, 16.039];
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null;
+
+  // Deduplizierte Parkplatz-Positionen (mehrere Routen können denselben Parkplatz teilen)
+  const parkingPositions = useMemo<[number, number][]>(() => {
+    if (!showParking) return [];
+    const seen = new Set<string>();
+    const result: [number, number][] = [];
+    for (const r of routes) {
+      if (r.parkingLatitude == null || r.parkingLongitude == null) continue;
+      const key = `${r.parkingLatitude},${r.parkingLongitude}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push([r.parkingLatitude, r.parkingLongitude]);
+      }
+    }
+    return result;
+  }, [routes, showParking]);
 
   return (
     <MapContainer
@@ -87,6 +149,14 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect }: RouteMapPro
           </Popup>
         </Marker>
       ))}
+      {showParking && parkingPositions.map(([lat, lng]) => (
+        <Marker
+          key={`parking-${lat}-${lng}`}
+          position={[lat, lng]}
+          icon={createParkingIcon()}
+        />
+      ))}
+      <FitToRoutes routes={routes} parkingPositions={parkingPositions} />
       <FlyToSelected route={selectedRoute} />
     </MapContainer>
   );
