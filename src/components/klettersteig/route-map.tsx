@@ -154,7 +154,32 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect, showParking }
           key={`parking-${lat}-${lng}`}
           position={[lat, lng]}
           icon={createParkingIcon()}
-        />
+        >
+          <Popup>
+            <div style={{ fontFamily: "inherit", textAlign: "center" }}>
+              <strong>Parkplatz</strong>
+              <br />
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  marginTop: 4,
+                  padding: "4px 10px",
+                  background: "#3b82f6",
+                  color: "white",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Navigieren
+              </a>
+            </div>
+          </Popup>
+        </Marker>
       ))}
       <FitToRoutes routes={routes} parkingPositions={parkingPositions} />
       <FlyToSelected route={selectedRoute} />
