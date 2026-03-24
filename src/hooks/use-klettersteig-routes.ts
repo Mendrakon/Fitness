@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { HOHE_WAND_ROUTES } from "@/lib/klettersteig-routes";
+import { HOHE_WAND_ROUTES, RAX_ROUTES } from "@/lib/klettersteig-routes";
 import type { KlettersteigRoute } from "@/lib/types";
 
 type DbRoute = {
@@ -14,6 +14,8 @@ type DbRoute = {
   longitude: number;
   elevation_gain: number | null;
   description: string | null;
+  parking_latitude: number | null;
+  parking_longitude: number | null;
 };
 
 function toRoute(row: DbRoute): KlettersteigRoute {
@@ -26,11 +28,13 @@ function toRoute(row: DbRoute): KlettersteigRoute {
     longitude: row.longitude,
     elevationGain: row.elevation_gain ?? undefined,
     description: row.description ?? undefined,
+    parkingLatitude: row.parking_latitude ?? undefined,
+    parkingLongitude: row.parking_longitude ?? undefined,
   };
 }
 
 export function useKlettersteigRoutes() {
-  const [routes, setRoutes] = useState<KlettersteigRoute[]>(HOHE_WAND_ROUTES);
+  const [routes, setRoutes] = useState<KlettersteigRoute[]>([...HOHE_WAND_ROUTES, ...RAX_ROUTES]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
