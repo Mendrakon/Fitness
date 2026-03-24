@@ -217,6 +217,8 @@ export interface KlettersteigRoute {
   longitude: number;
   elevationGain?: number;
   description?: string;
+  parkingLatitude?: number;
+  parkingLongitude?: number;
 }
 
 export interface KlettersteigWeather {
