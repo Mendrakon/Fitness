@@ -51,6 +51,14 @@ function createParkingIcon() {
   });
 }
 
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+  }, [map]);
+  return null;
+}
+
 function FlyToSelected({ route }: { route: KlettersteigRoute | null }) {
   const map = useMap();
   useEffect(() => {
@@ -140,6 +148,7 @@ export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom,
           </Popup>
         </Marker>
       ))}
+      <InvalidateSize />
       <FlyToSelected route={selectedRoute} />
       <FlyToLocation center={center} zoom={zoom} />
     </MapContainer>

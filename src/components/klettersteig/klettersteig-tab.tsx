@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useKlettersteigSession } from "@/contexts/klettersteig-session-context";
@@ -60,6 +61,7 @@ export function KlettersteigTab() {
   const [summaryNotes, setSummaryNotes] = useState("");
   const [selectedGebirge, setSelectedGebirge] = useState<string | null>(null);
   const [showParking, setShowParking] = useState(false);
+  const [isMapMaximized, setIsMapMaximized] = useState(false);
 
   const filteredRoutes = useMemo(
     () => selectedGebirge ? routes.filter((r) => r.locationId === selectedGebirge) : routes,
@@ -315,16 +317,45 @@ export function KlettersteigTab() {
       </div>
 
       {/* Map */}
-      <div className="h-72 rounded-lg overflow-hidden border border-border">
-        <RouteMap
-          routes={filteredRoutes}
-          selectedRouteId={selectedRoute?.id ?? null}
-          onRouteSelect={handleRouteSelect}
-          center={mapCenter}
-          zoom={mapZoom}
-          parkingSpots={visibleParking}
-        />
-      </div>
+      {isMapMaximized ? (
+        <div className="fixed inset-0 z-50 bg-background">
+          <RouteMap
+            routes={filteredRoutes}
+            selectedRouteId={selectedRoute?.id ?? null}
+            onRouteSelect={handleRouteSelect}
+            center={mapCenter}
+            zoom={mapZoom}
+            parkingSpots={visibleParking}
+          />
+          <button
+            onClick={() => setIsMapMaximized(false)}
+            className="absolute top-4 right-4 flex items-center justify-center w-9 h-9 rounded-md bg-white/90 shadow-md hover:bg-white transition-colors"
+            style={{ zIndex: 1000 }}
+            aria-label="Karte minimieren"
+          >
+            <Minimize2 size={18} className="text-gray-700" />
+          </button>
+        </div>
+      ) : (
+        <div className="relative h-72 rounded-lg overflow-hidden border border-border">
+          <RouteMap
+            routes={filteredRoutes}
+            selectedRouteId={selectedRoute?.id ?? null}
+            onRouteSelect={handleRouteSelect}
+            center={mapCenter}
+            zoom={mapZoom}
+            parkingSpots={visibleParking}
+          />
+          <button
+            onClick={() => setIsMapMaximized(true)}
+            className="absolute top-2 right-2 flex items-center justify-center w-8 h-8 rounded-md bg-white/90 shadow-md hover:bg-white transition-colors"
+            style={{ zIndex: 1000 }}
+            aria-label="Karte maximieren"
+          >
+            <Maximize2 size={16} className="text-gray-700" />
+          </button>
+        </div>
+      )}
 
       {/* Route Legend */}
       <div className="flex flex-wrap gap-1.5">
