@@ -54,7 +54,8 @@ function createParkingIcon() {
 function InvalidateSize() {
   const map = useMap();
   useEffect(() => {
-    map.invalidateSize();
+    const t = setTimeout(() => map.invalidateSize(), 50);
+    return () => clearTimeout(t);
   }, [map]);
   return null;
 }
@@ -84,16 +85,17 @@ interface RouteMapProps {
   center: [number, number];
   zoom: number;
   parkingSpots?: KlettersteigParking[];
+  fullscreen?: boolean;
 }
 
-export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom, parkingSpots = [] }: RouteMapProps) {
+export function RouteMap({ routes, selectedRouteId, onRouteSelect, center, zoom, parkingSpots = [], fullscreen = false }: RouteMapProps) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null;
 
   return (
     <MapContainer
       center={center}
       zoom={zoom}
-      style={{ height: "100%", width: "100%", borderRadius: "0.5rem" }}
+      style={{ height: fullscreen ? "100dvh" : "100%", width: "100%", borderRadius: fullscreen ? 0 : "0.5rem" }}
       zoomControl={false}
       attributionControl={false}
     >

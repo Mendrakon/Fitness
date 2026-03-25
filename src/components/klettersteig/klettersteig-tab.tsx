@@ -318,7 +318,7 @@ export function KlettersteigTab() {
 
       {/* Map */}
       {isMapMaximized ? (
-        <div className="fixed inset-0 z-50 bg-background">
+        <div className="fixed inset-0 z-50 bg-background" style={{ height: "100dvh" }}>
           <RouteMap
             routes={filteredRoutes}
             selectedRouteId={selectedRoute?.id ?? null}
@@ -326,6 +326,7 @@ export function KlettersteigTab() {
             center={mapCenter}
             zoom={mapZoom}
             parkingSpots={visibleParking}
+            fullscreen
           />
           <button
             onClick={() => setIsMapMaximized(false)}
