@@ -330,8 +330,8 @@ export function KlettersteigTab() {
           />
           <button
             onClick={() => setIsMapMaximized(false)}
-            className="absolute top-4 right-4 flex items-center justify-center w-9 h-9 rounded-md bg-white/90 shadow-md hover:bg-white transition-colors"
-            style={{ zIndex: 1000 }}
+            className="absolute right-4 flex items-center justify-center w-9 h-9 rounded-md bg-white/90 shadow-md hover:bg-white transition-colors"
+            style={{ zIndex: 1000, top: "calc(env(safe-area-inset-top) + 12px)" }}
             aria-label="Karte minimieren"
           >
             <Minimize2 size={18} className="text-gray-700" />
