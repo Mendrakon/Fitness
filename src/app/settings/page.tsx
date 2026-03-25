@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { useSettings } from "@/hooks/use-settings";
 import { useWorkouts } from "@/hooks/use-workouts";
 import { useTemplates } from "@/hooks/use-templates";
@@ -162,6 +163,9 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // Clear all user-specific data from localStorage so the next account
+    // that logs in on this device doesn't inherit data from the previous user.
+    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
     router.push("/login");
     router.refresh();
   };
