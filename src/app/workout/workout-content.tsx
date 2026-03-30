@@ -39,6 +39,14 @@ import { PR_METRIC_LABELS, formatPRDiff } from "@/lib/types";
 import type { SetTag, RPE, WorkoutExercise, Template, CardioData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const TAG_CYCLE: SetTag[] = [null, "warmup", "dropset", "failure"];
 const TAG_LABELS: Record<string, { label: string; color: string }> = {
@@ -319,6 +327,29 @@ function TemplateCard({
   );
 }
 
+// ── Sortable Exercise Item ─────────────────────────────────────────────────────
+
+function SortableExerciseItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "opacity-50 relative z-10" : undefined}
+      {...attributes}
+    >
+      {children((listeners ?? {}) as React.HTMLAttributes<HTMLElement>)}
+    </div>
+  );
+}
+
 // ── Workout Start Screen ──────────────────────────────────────────────────────
 
 function WorkoutStartScreen() {
@@ -488,6 +519,12 @@ function WorkoutPageInner() {
   const [swipedSetId, setSwipedSetId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const SWIPE_DELETE_THRESHOLD = 80;
+
+  // Drag & Drop sensors – must be before any conditional return
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const handleShare = (visibility: FeedVisibility | null) => {
     setShareDialogOpen(false);
@@ -689,6 +726,15 @@ function WorkoutPageInner() {
     reorderExercises(ids);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = activeWorkout.exercises.findIndex(e => e.id === active.id);
+      const newIndex = activeWorkout.exercises.findIndex(e => e.id === over.id);
+      reorderExercises(arrayMove(activeWorkout.exercises.map(e => e.id), oldIndex, newIndex));
+    }
+  };
+
   // Get previous values for an exercise
   const getPreviousSets = (exerciseId: string) => {
     if (!settings.showPreviousValues) return null;
@@ -755,6 +801,8 @@ function WorkoutPageInner() {
       )}
 
       {/* Exercise List */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={activeWorkout.exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
       {activeWorkout.exercises.map((we, exerciseIdx) => {
         const exercise = getExercise(we.exerciseId);
         if (!exercise) return null;
@@ -762,7 +810,9 @@ function WorkoutPageInner() {
         const previousSets = getPreviousSets(we.exerciseId);
 
         return (
-          <React.Fragment key={we.id}>
+          <SortableExerciseItem key={we.id} id={we.id}>
+            {(dragHandleProps) => (
+          <React.Fragment>
           <Card
             className={cn(
               "overflow-hidden",
@@ -770,7 +820,9 @@ function WorkoutPageInner() {
             )}
           >
             <CardHeader className="flex flex-row items-center gap-2 py-2.5 px-3 bg-muted/30">
-              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
+              <div {...dragHandleProps} className="touch-none cursor-grab active:cursor-grabbing">
+                <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-primary truncate">{exercise.name}</p>
               </div>
@@ -1145,8 +1197,12 @@ function WorkoutPageInner() {
             </div>
           )}
           </React.Fragment>
+            )}
+          </SortableExerciseItem>
         );
       })}
+        </SortableContext>
+      </DndContext>
 
       {/* Add Exercise Button */}
       <Button

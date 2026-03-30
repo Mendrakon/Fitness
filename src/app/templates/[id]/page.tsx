@@ -4,6 +4,14 @@ import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import { Plus, Trash2, GripVertical, Play, Save } from "lucide-react";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -20,6 +28,27 @@ import { useExercises } from "@/hooks/use-exercises";
 import { useActiveWorkout } from "@/contexts/active-workout-context";
 import type { TemplateExercise, TemplateSet } from "@/lib/types";
 import { toast } from "sonner";
+
+function SortableExerciseItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "opacity-50 relative z-10" : undefined}
+      {...attributes}
+    >
+      {children((listeners ?? {}) as React.HTMLAttributes<HTMLElement>)}
+    </div>
+  );
+}
 
 export default function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -39,6 +68,20 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
     existing?.exercises || []
   );
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = exercises.findIndex(e => e.id === active.id);
+      const newIndex = exercises.findIndex(e => e.id === over.id);
+      setExercises(prev => arrayMove(prev, oldIndex, newIndex));
+    }
+  };
 
   // Sync state after localStorage hydration (templates load asynchronously)
   useEffect(() => {
@@ -179,14 +222,20 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Exercises */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={exercises.map(e => e.id)} strategy={verticalListSortingStrategy}>
         {exercises.map(te => {
           const exercise = getExercise(te.exerciseId);
           if (!exercise) return null;
 
           return (
-            <Card key={te.id}>
+            <SortableExerciseItem key={te.id} id={te.id}>
+              {(dragHandleProps) => (
+            <Card>
               <CardHeader className="flex flex-row items-center gap-2 py-2.5 px-3 bg-muted/30">
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                <div {...dragHandleProps} className="touch-none cursor-grab active:cursor-grabbing">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                </div>
                 <p className="flex-1 font-semibold text-sm text-primary truncate">
                   {exercise.name}
                 </p>
@@ -255,8 +304,12 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </CardContent>
             </Card>
+              )}
+            </SortableExerciseItem>
           );
         })}
+          </SortableContext>
+        </DndContext>
 
         <Button
           variant="outline"
