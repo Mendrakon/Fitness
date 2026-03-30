@@ -1,25 +1,50 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter
+} from "@/components/ui/drawer";
 import { PageHeader } from "@/components/layout/page-header";
 import { useExercises } from "@/hooks/use-exercises";
 import { useWorkouts } from "@/hooks/use-workouts";
-import { MUSCLE_GROUP_LABELS, CATEGORY_LABELS } from "@/lib/types";
+import {
+  MUSCLE_GROUP_LABELS, CATEGORY_LABELS,
+  type MuscleGroup, type ExerciseCategory
+} from "@/lib/types";
 import { estimate1RM, exerciseVolume } from "@/lib/calculations";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Trophy, TrendingUp, Dumbbell, Calendar, BarChart3 } from "lucide-react";
+import { Trophy, TrendingUp, Dumbbell, Calendar, BarChart3, Pencil, Trash2 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 
+const muscleGroups: MuscleGroup[] = [
+  "chest", "back", "shoulders", "biceps", "triceps", "quads",
+  "hamstrings", "glutes", "calves", "core", "forearms", "full_body", "cardio",
+];
+
 export default function ExerciseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { getById } = useExercises();
+  const router = useRouter();
+  const { getById, updateExercise, deleteExercise } = useExercises();
   const { getForExercise } = useWorkouts();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editCategory, setEditCategory] = useState<ExerciseCategory>("barbell");
+  const [editMuscle, setEditMuscle] = useState<MuscleGroup>("chest");
 
   const exercise = getById(id);
   const workoutsWithExercise = getForExercise(id);
@@ -89,6 +114,29 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
       .filter(Boolean);
   }, [workoutsWithExercise, id]);
 
+  const openEdit = () => {
+    setEditName(exercise!.name);
+    setEditCategory(exercise!.category);
+    setEditMuscle(exercise!.muscleGroup);
+    setEditOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!editName.trim()) return;
+    updateExercise(id, {
+      name: editName.trim(),
+      category: editCategory,
+      muscleGroup: editMuscle,
+      equipment: CATEGORY_LABELS[editCategory],
+    });
+    setEditOpen(false);
+  };
+
+  const handleDelete = () => {
+    deleteExercise(id);
+    router.back();
+  };
+
   if (!exercise) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -99,7 +147,22 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="flex flex-col">
-      <PageHeader title={exercise.name} showBack />
+      <PageHeader
+        title={exercise.name}
+        showBack
+        rightAction={
+          exercise.isCustom ? (
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={openEdit}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ) : undefined
+        }
+      />
 
       <Tabs defaultValue="info" className="px-4 pt-3">
         <TabsList className="w-full">
@@ -238,7 +301,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
         </TabsContent>
 
         {/* Charts Tab */}
-        <TabsContent value="charts" className="mt-3 space-y-4">
+        <TabsContent value="charts" className="mt-3 mb-4 space-y-4">
           {chartData.length < 2 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <BarChart3 className="h-8 w-8 text-muted-foreground mb-2" />
@@ -334,6 +397,68 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ id: s
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Drawer */}
+      <Drawer open={editOpen} onOpenChange={setEditOpen} repositionInputs={false}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Übung bearbeiten</DrawerTitle>
+          </DrawerHeader>
+          <div className="space-y-4 px-4 pb-2">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                placeholder="Übungsname..."
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Kategorie</Label>
+              <Select value={editCategory} onValueChange={v => setEditCategory(v as ExerciseCategory)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CATEGORY_LABELS) as ExerciseCategory[]).map(c => (
+                    <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Muskelgruppe</Label>
+              <Select value={editMuscle} onValueChange={v => setEditMuscle(v as MuscleGroup)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {muscleGroups.map(g => (
+                    <SelectItem key={g} value={g}>{MUSCLE_GROUP_LABELS[g]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DrawerFooter>
+            <Button onClick={handleSave} disabled={!editName.trim()}>Speichern</Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Delete Confirmation Drawer */}
+      <Drawer open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Übung löschen?</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-2">
+            <p className="text-sm text-muted-foreground">
+              „{exercise.name}" wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+          </div>
+          <DrawerFooter>
+            <Button variant="destructive" onClick={handleDelete}>Löschen</Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Abbrechen</Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
