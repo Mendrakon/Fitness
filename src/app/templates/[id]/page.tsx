@@ -12,6 +12,7 @@ import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -42,7 +43,7 @@ function SortableExerciseItem({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "opacity-50 relative z-10" : undefined}
+      className={cn("select-none", isDragging ? "opacity-50 relative z-10" : undefined)}
       {...attributes}
     >
       {children((listeners ?? {}) as React.HTMLAttributes<HTMLElement>)}

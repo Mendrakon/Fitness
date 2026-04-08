@@ -342,7 +342,7 @@ function SortableExerciseItem({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "opacity-50 relative z-10" : undefined}
+      className={cn("select-none", isDragging ? "opacity-50 relative z-10" : undefined)}
       {...attributes}
     >
       {children((listeners ?? {}) as React.HTMLAttributes<HTMLElement>)}
